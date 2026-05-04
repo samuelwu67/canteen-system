@@ -9,22 +9,44 @@ body{
   font-family: Arial;
   padding: 15px;
   font-size: 18px;
+  background:#f5f5f5;
 }
 
+h2{text-align:center;}
+
 .box{
-  border:1px solid #ccc;
-  padding:10px;
+  background:white;
+  border:1px solid #ddd;
+  padding:15px;
   margin:10px 0;
+  border-radius:12px;
 }
 
 button{
   padding:10px;
   margin:5px;
+  width:100%;
+  font-size:18px;
+  border:none;
+  border-radius:8px;
+  background:#4CAF50;
+  color:white;
 }
 
+button:active{transform:scale(0.98);}
+
 select{
-  padding:5px;
-  margin:5px;
+  width:100%;
+  padding:8px;
+  margin:5px 0;
+  font-size:16px;
+}
+
+input{
+  width:100%;
+  padding:8px;
+  margin:5px 0;
+  font-size:16px;
 }
 </style>
 
@@ -34,33 +56,47 @@ select{
 
 <h2>🍦 園遊會點餐系統</h2>
 
-<!-- 外場 -->
-<div id="front" class="box">
+<!-- ====================== -->
+<!-- 🎭 選身分 -->
+<!-- ====================== -->
+<div id="choose" class="box">
+  <h3>請選擇身分</h3>
+  <button onclick="setRole('front')">我是外場</button>
+  <button onclick="setRole('back')">我是內場</button>
+</div>
+
+<!-- ====================== -->
+<!-- 🍦 外場 -->
+<!-- ====================== -->
+<div id="front" style="display:none;" class="box">
 
 <h3>外場點餐</h3>
 
 <div id="cart"></div>
 
 <button onclick="addItem()">➕ 新增餐點</button>
-<br><br>
-
-<button onclick="sendOrder()">📦 送出全部訂單</button>
+<button onclick="sendOrder()">📦 送出訂單</button>
 
 </div>
 
-<!-- 內場 -->
-<div id="back" class="box" style="display:none;">
-<h3>內場</h3>
+<!-- ====================== -->
+<!-- 📋 內場 -->
+<!-- ====================== -->
+<div id="back" style="display:none;" class="box">
+
+<h3>內場訂單</h3>
 <div id="orders"></div>
+
 </div>
 
-<!-- Firebase -->
+<!-- ====================== -->
+<!-- 🔥 Firebase -->
+<!-- ====================== -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
 <script>
 
-// 🔥 Firebase
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_AUTH_DOMAIN",
@@ -72,6 +108,36 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 let items = [];
+
+
+// ======================
+// 🎭 角色系統
+// ======================
+function setRole(role){
+  localStorage.setItem("role", role);
+  show();
+}
+
+function show(){
+  const role = localStorage.getItem("role");
+
+  document.getElementById("choose").style.display = "none";
+  document.getElementById("front").style.display = "none";
+  document.getElementById("back").style.display = "none";
+
+  if(!role){
+    document.getElementById("choose").style.display = "block";
+    return;
+  }
+
+  if(role === "front"){
+    document.getElementById("front").style.display = "block";
+  }
+
+  if(role === "back"){
+    document.getElementById("back").style.display = "block";
+  }
+}
 
 
 // ======================
@@ -99,18 +165,17 @@ function addItem(){
 
   document.getElementById("cart").innerHTML += html;
 
-  items.push({id:id});
+  items.push(id);
 }
 
 
 // ======================
-// 🍽️ 選類別後顯示內容
+// 🍽 類別切換（冰淇淋才有配料）
 // ======================
 function updateType(id, type){
 
   let html = "";
 
-  // 🍦 冰淇淋 + 配料
   if(type === "ice"){
     html = `
       冰淇淋：
@@ -136,7 +201,6 @@ function updateType(id, type){
     `;
   }
 
-  // 🐟 鯛魚燒
   if(type === "taiyaki"){
     html = `
       鯛魚燒：
@@ -153,7 +217,6 @@ function updateType(id, type){
     `;
   }
 
-  // 🧇 鬆餅
   if(type === "waffle"){
     html = `
       鬆餅：
@@ -185,34 +248,35 @@ function sendOrder(){
     now.getFullYear()+"/"+(now.getMonth()+1)+"/"+now.getDate()+" "+
     now.getHours()+":"+now.getMinutes()+":"+now.getSeconds();
 
-  const order = [];
+  let order = [];
 
-  items.forEach(i => {
+  items.forEach(id => {
 
-    const sub = document.getElementById("sub-"+i.id);
+    const sub = document.getElementById("sub-"+id);
+    if(!sub) return;
 
     if(sub.innerHTML.includes("冰淇淋")){
       order.push({
         type:"冰淇淋",
-        item: document.getElementById("ice-"+i.id).value,
-        topping: document.getElementById("top-"+i.id).value,
-        qty: document.getElementById("qty-"+i.id).value
+        item: document.getElementById("ice-"+id).value,
+        topping: document.getElementById("top-"+id).value,
+        qty: document.getElementById("qty-"+id).value
       });
     }
 
     if(sub.innerHTML.includes("鯛魚燒")){
       order.push({
         type:"鯛魚燒",
-        item: document.getElementById("food-"+i.id).value,
-        qty: document.getElementById("qty-"+i.id).value
+        item: document.getElementById("food-"+id).value,
+        qty: document.getElementById("qty-"+id).value
       });
     }
 
     if(sub.innerHTML.includes("鬆餅")){
       order.push({
         type:"鬆餅",
-        item: document.getElementById("food-"+i.id).value,
-        qty: document.getElementById("qty-"+i.id).value
+        item: document.getElementById("food-"+id).value,
+        qty: document.getElementById("qty-"+id).value
       });
     }
 
@@ -225,6 +289,7 @@ function sendOrder(){
   });
 
   alert("已送出訂單！");
+
   document.getElementById("cart").innerHTML = "";
   items = [];
 }
@@ -243,8 +308,7 @@ db.ref("orders").on("value", snap => {
     const o = data[id];
 
     let list = "";
-
-    o.items.forEach(i => {
+    o.items.forEach(i=>{
       list += `${i.type} ${i.item} x${i.qty}<br>`;
     });
 
@@ -279,6 +343,10 @@ function del(id){
     db.ref("orders/"+id).remove();
   }
 }
+
+
+// 🚀 初始化
+show();
 
 </script>
 
