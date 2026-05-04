@@ -7,8 +7,8 @@
 <style>
 body{
   font-family: Arial;
-  padding: 15px;
-  font-size: 18px;
+  font-size:18px;
+  padding:15px;
   background:#f5f5f5;
 }
 
@@ -16,19 +16,19 @@ h2{text-align:center;}
 
 .box{
   background:white;
-  border:1px solid #ddd;
   padding:15px;
   margin:10px 0;
   border-radius:12px;
+  border:1px solid #ddd;
 }
 
 button{
-  padding:12px;
-  margin:5px 0;
   width:100%;
-  font-size:18px;
+  padding:12px;
+  margin-top:8px;
   border:none;
   border-radius:10px;
+  font-size:18px;
   background:#4CAF50;
   color:white;
 }
@@ -42,41 +42,33 @@ select{
   font-size:16px;
 }
 </style>
-
 </head>
 
 <body>
 
 <h2>🍦 園遊會點餐系統</h2>
 
-<!-- ====================== -->
-<!-- 🎭 選身分 -->
-<!-- ====================== -->
-<div id="choose" class="box">
+<!-- 角色 -->
+<div id="roleBox" class="box">
   <h3>請選擇身分</h3>
   <button id="btnFront">我是外場</button>
   <button id="btnBack">我是內場</button>
 </div>
 
-<!-- ====================== -->
 <!-- 外場 -->
-<!-- ====================== -->
 <div id="front" class="box" style="display:none;">
-<h3>外場點餐</h3>
+  <h3>外場點餐</h3>
 
-<div id="cart"></div>
+  <div id="cart"></div>
 
-<button id="addBtn">➕ 新增餐點</button>
-<button id="sendBtn">📦 送出訂單</button>
-
+  <button id="addBtn">➕ 新增餐點</button>
+  <button id="sendBtn">📦 送出訂單</button>
 </div>
 
-<!-- ====================== -->
 <!-- 內場 -->
-<!-- ====================== -->
 <div id="back" class="box" style="display:none;">
-<h3>內場訂單</h3>
-<div id="orders"></div>
+  <h3>內場訂單</h3>
+  <div id="orders"></div>
 </div>
 
 <!-- Firebase -->
@@ -85,7 +77,7 @@ select{
 
 <script>
 
-// 🔥 Firebase（換你的）
+/* 🔥 Firebase */
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_AUTH_DOMAIN",
@@ -96,36 +88,28 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-let items = [];
-
-
-// ======================
-// 🎭 角色（用 addEventListener）
-// ======================
-document.getElementById("btnFront").addEventListener("click", ()=>{
+/* ======================
+   🎭 角色切換（穩定版）
+====================== */
+document.getElementById("btnFront").onclick = () => {
   localStorage.setItem("role","front");
-  show();
-});
+  renderRole();
+};
 
-document.getElementById("btnBack").addEventListener("click", ()=>{
+document.getElementById("btnBack").onclick = () => {
   localStorage.setItem("role","back");
-  show();
-});
+  renderRole();
+};
 
-
-// ======================
-// 🚀 顯示控制
-// ======================
-function show(){
-
+function renderRole(){
   const role = localStorage.getItem("role");
 
-  document.getElementById("choose").style.display = "none";
+  document.getElementById("roleBox").style.display = "none";
   document.getElementById("front").style.display = "none";
   document.getElementById("back").style.display = "none";
 
   if(!role){
-    document.getElementById("choose").style.display = "block";
+    document.getElementById("roleBox").style.display = "block";
     return;
   }
 
@@ -133,23 +117,21 @@ function show(){
   if(role === "back") document.getElementById("back").style.display = "block";
 }
 
+/* ======================
+   🍽 點餐資料
+====================== */
+let cart = [];
 
-// ======================
-// ➕ 新增餐點（事件綁定）
-// ======================
-document.getElementById("addBtn").addEventListener("click", addItem);
-
-function addItem(){
+/* ➕ 新增餐點 */
+document.getElementById("addBtn").onclick = () => {
 
   const id = Date.now();
 
-  items.push({id});
+  const box = document.createElement("div");
+  box.className = "box";
+  box.dataset.id = id;
 
-  const div = document.createElement("div");
-  div.className = "box";
-  div.id = "item-"+id;
-
-  div.innerHTML = `
+  box.innerHTML = `
     類別：
     <select class="type">
       <option value="">請選</option>
@@ -160,35 +142,34 @@ function addItem(){
 
     <div class="sub"></div>
 
-    <button class="remove red">❌ 取消餐點</button>
+    <button class="remove red">❌ 取消</button>
   `;
 
-  document.getElementById("cart").appendChild(div);
+  document.getElementById("cart").appendChild(box);
 
-  // 類別變動
-  div.querySelector(".type").addEventListener("change", function(){
-    updateType(id, this.value, div);
-  });
+  cart.push({id});
 
-  // 刪除
-  div.querySelector(".remove").addEventListener("click", function(){
-    div.remove();
-    items = items.filter(i => i.id !== id);
-  });
-}
+  /* 類別 */
+  box.querySelector(".type").onchange = (e)=>{
+    renderItem(id, e.target.value, box);
+  };
 
+  /* 刪除 */
+  box.querySelector(".remove").onclick = ()=>{
+    box.remove();
+    cart = cart.filter(c => c.id !== id);
+  };
+};
 
-// ======================
-// 🍽 類別內容
-// ======================
-function updateType(id, type, div){
+/* 🍽 內容 */
+function renderItem(id, type, box){
 
   let html = "";
 
   if(type === "ice"){
     html = `
       冰淇淋：
-      <select class="ice">
+      <select class="item">
         <option>原味</option>
         <option>巧克力</option>
         <option>草莓</option>
@@ -213,7 +194,7 @@ function updateType(id, type, div){
   if(type === "taiyaki"){
     html = `
       鯛魚燒：
-      <select class="food">
+      <select class="item">
         <option>巧克力</option>
         <option>卡士達</option>
       </select>
@@ -229,8 +210,8 @@ function updateType(id, type, div){
   if(type === "waffle"){
     html = `
       鬆餅：
-      <select class="food">
-        <option>淋巧克力醬</option>
+      <select class="item">
+        <option>巧克力醬</option>
         <option>不淋</option>
       </select>
 
@@ -242,19 +223,15 @@ function updateType(id, type, div){
     `;
   }
 
-  div.querySelector(".sub").innerHTML = html;
+  box.querySelector(".sub").innerHTML = html;
 }
 
-
-// ======================
-// 📦 送出訂單（穩定版）
-// ======================
-document.getElementById("sendBtn").addEventListener("click", sendOrder);
-
-function sendOrder(){
+/* ======================
+   📦 送出（穩定版）
+====================== */
+document.getElementById("sendBtn").onclick = () => {
 
   const now = new Date();
-
   const time =
     now.getFullYear()+"/"+(now.getMonth()+1)+"/"+now.getDate()+" "+
     now.getHours()+":"+now.getMinutes()+":"+now.getSeconds();
@@ -268,53 +245,34 @@ function sendOrder(){
 
     if(!type || !sub.innerHTML) return;
 
-    if(type === "ice"){
-      order.push({
-        type:"冰淇淋",
-        item: box.querySelector(".ice").value,
-        topping: box.querySelector(".top").value,
-        qty: box.querySelector(".qty").value
-      });
-    }
-
-    if(type === "taiyaki"){
-      order.push({
-        type:"鯛魚燒",
-        item: box.querySelector(".food").value,
-        qty: box.querySelector(".qty").value
-      });
-    }
-
-    if(type === "waffle"){
-      order.push({
-        type:"鬆餅",
-        item: box.querySelector(".food").value,
-        qty: box.querySelector(".qty").value
-      });
-    }
+    order.push({
+      type,
+      item: box.querySelector(".item")?.value || "",
+      top: box.querySelector(".top")?.value || "",
+      qty: box.querySelector(".qty")?.value || "1"
+    });
   });
 
   if(order.length === 0){
-    alert("請先點餐！");
+    alert("請先點餐");
     return;
   }
 
   db.ref("orders").push({
     items: order,
-    time: time,
-    done: false
+    time,
+    done:false
   });
 
-  alert("送出成功！");
-
   document.getElementById("cart").innerHTML = "";
-  items = [];
-}
+  cart = [];
 
+  alert("已送出！");
+};
 
-// ======================
-// 📡 內場
-// ======================
+/* ======================
+   📡 內場
+====================== */
 db.ref("orders").on("value", snap=>{
 
   const data = snap.val() || {};
@@ -353,12 +311,11 @@ function done(id){
 }
 
 function del(id){
-  if(confirm("刪除？")){
-    db.ref("orders/"+id).remove();
-  }
+  db.ref("orders/"+id).remove();
 }
 
-show();
+/* 初始化 */
+renderRole();
 
 </script>
 
