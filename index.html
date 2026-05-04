@@ -4,18 +4,61 @@
 <meta charset="UTF-8">
 <title>園遊會點餐系統</title>
 
+<!-- 📱 手機優化 UI -->
 <style>
-body { font-family: Arial; padding: 20px; }
-.box { border: 1px solid #ccc; padding: 15px; margin: 10px 0; }
-button { margin: 5px; padding: 8px; }
-select { margin-right: 10px; }
+body{
+  font-family: Arial;
+  padding: 15px;
+  font-size: 20px;
+  background: #f7f7f7;
+}
+
+h2{
+  text-align:center;
+}
+
+.box{
+  background: white;
+  border: 1px solid #ddd;
+  padding: 15px;
+  margin: 10px 0;
+  border-radius: 12px;
+}
+
+select, input{
+  font-size: 20px;
+  padding: 10px;
+  width: 100%;
+  margin: 5px 0 10px 0;
+}
+
+button{
+  font-size: 20px;
+  padding: 12px;
+  width: 100%;
+  margin-top: 10px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 10px;
+}
+
+button:active{
+  transform: scale(0.98);
+}
+
+.order-box{
+  border-top: 1px solid #eee;
+  padding-top: 10px;
+  margin-top: 10px;
+}
 </style>
 
 </head>
 
 <body>
 
-<h2>園遊會點餐系統</h2>
+<h2>🍦 園遊會點餐系統</h2>
 
 <!-- 選身分 -->
 <div id="choose" class="box">
@@ -26,10 +69,13 @@ select { margin-right: 10px; }
 
 <!-- 外場 -->
 <div id="front" style="display:none;" class="box">
+
 <h3>外場點餐</h3>
 
-<!-- 冰淇淋 -->
-冰淇淋：
+👤 指名：
+<input type="text" id="customerName" placeholder="例如：小明 / 3號桌">
+
+🍦 冰淇淋：
 <select id="ice">
   <option>無</option>
   <option>原味</option>
@@ -45,10 +91,7 @@ select { margin-right: 10px; }
   <option value="3">3</option>
 </select>
 
-<br><br>
-
-<!-- 配料 -->
-配料：
+🍫 配料：
 <select id="topping">
   <option>無</option>
   <option>巧克力脆片</option>
@@ -63,10 +106,7 @@ select { margin-right: 10px; }
   <option value="2">2</option>
 </select>
 
-<br><br>
-
-<!-- 鯛魚燒 -->
-鯛魚燒：
+🐟 鯛魚燒：
 <select id="taiyaki">
   <option>無</option>
   <option>巧克力</option>
@@ -80,10 +120,7 @@ select { margin-right: 10px; }
   <option value="2">2</option>
 </select>
 
-<br><br>
-
-<!-- 鬆餅 -->
-鬆餅：
+🧇 鬆餅：
 <select id="waffle">
   <option>無</option>
   <option>淋巧克力醬</option>
@@ -97,14 +134,13 @@ select { margin-right: 10px; }
   <option value="2">2</option>
 </select>
 
-<br><br>
+<button onclick="sendOrder()">📦 送出訂單</button>
 
-<button onclick="sendOrder()">送出訂單</button>
 </div>
 
 <!-- 內場 -->
 <div id="back" style="display:none;" class="box">
-<h3>內場訂單</h3>
+<h3>📋 內場訂單</h3>
 <div id="orders"></div>
 </div>
 
@@ -114,9 +150,7 @@ select { margin-right: 10px; }
 
 <script>
 
-// ======================
-// 🔥 Firebase（請換成你的）
-// ======================
+// 🔥 Firebase（換成你的）
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_AUTH_DOMAIN",
@@ -129,7 +163,7 @@ const db = firebase.database();
 
 
 // ======================
-// 🎭 角色系統
+// 🎭 角色
 // ======================
 function setRole(role){
   localStorage.setItem("role", role);
@@ -159,46 +193,56 @@ function show(){
 
 
 // ======================
-// 🧾 送出訂單
+// 🧾 送出訂單（防錯版）
 // ======================
 function sendOrder(){
 
-  const now = new Date();
+  try{
 
-  const time =
-    now.getFullYear()+"/"+(now.getMonth()+1)+"/"+now.getDate()+" "+
-    now.getHours()+":"+now.getMinutes()+":"+now.getSeconds();
+    const now = new Date();
 
-  db.ref("orders").once("value", snap => {
+    const time =
+      now.getFullYear()+"/"+(now.getMonth()+1)+"/"+now.getDate()+" "+
+      now.getHours()+":"+now.getMinutes()+":"+now.getSeconds();
 
-    const count = snap.numChildren() + 1;
+    db.ref("orders").once("value", snap => {
 
-    db.ref("orders").push({
-      orderNo: count,
+      const count = snap.numChildren() + 1;
 
-      ice: ice.value,
-      iceQty: iceQty.value,
+      db.ref("orders").push({
+        orderNo: count,
 
-      topping: topping.value,
-      toppingQty: toppingQty.value,
+        name: customerName.value || "未填",
 
-      taiyaki: taiyaki.value,
-      taiyakiQty: taiyakiQty.value,
+        ice: ice.value,
+        iceQty: iceQty.value,
 
-      waffle: waffle.value,
-      waffleQty: waffleQty.value,
+        topping: topping.value,
+        toppingQty: toppingQty.value,
 
-      time: time,
-      done: false
+        taiyaki: taiyaki.value,
+        taiyakiQty: taiyakiQty.value,
+
+        waffle: waffle.value,
+        waffleQty: waffleQty.value,
+
+        time: time,
+        done: false
+      });
+
+      alert("已送出訂單 #" + count);
+
     });
 
-    alert("已送出訂單 #" + count);
-  });
+  } catch(err){
+    alert("送出失敗：" + err.message);
+    console.log(err);
+  }
 }
 
 
 // ======================
-// 📡 即時訂單（防炸）
+// 📡 即時訂單（防 crash）
 // ======================
 db.ref("orders").on("value", snap => {
 
@@ -209,8 +253,9 @@ db.ref("orders").on("value", snap => {
     const o = data[id];
 
     html += `
-      <div>
+      <div class="order-box">
         <b>📦 #${o.orderNo}</b><br>
+        👤 ${o.name || "未填"}<br>
         ⏰ ${o.time}<br>
 
         🍦 ${o.ice} x ${o.iceQty}<br>
@@ -222,11 +267,9 @@ db.ref("orders").on("value", snap => {
           ${o.done ? "✔已完成" : "完成"}
         </button>
 
-        <button onclick="del('${id}')" style="color:red;">
+        <button onclick="del('${id}')" style="background:red;">
           刪除
         </button>
-
-        <hr>
       </div>
     `;
   }
@@ -253,9 +296,7 @@ function del(id){
 }
 
 
-// ======================
 // 🚀 初始化
-// ======================
 show();
 
 </script>
