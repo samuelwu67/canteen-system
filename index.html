@@ -8,6 +8,7 @@
 body { font-family: Arial; padding: 20px; }
 .box { border: 1px solid #ccc; padding: 15px; margin: 10px 0; }
 button { margin: 5px; padding: 8px; }
+select { margin-right: 10px; }
 </style>
 
 </head>
@@ -27,6 +28,7 @@ button { margin: 5px; padding: 8px; }
 <div id="front" style="display:none;" class="box">
 <h3>外場點餐</h3>
 
+<!-- 冰淇淋 -->
 冰淇淋：
 <select id="ice">
   <option>無</option>
@@ -35,8 +37,17 @@ button { margin: 5px; padding: 8px; }
   <option>草莓</option>
 </select>
 
+份數：
+<select id="iceQty">
+  <option value="0">0</option>
+  <option value="1">1</option>
+  <option value="2">2</option>
+  <option value="3">3</option>
+</select>
+
 <br><br>
 
+<!-- 配料 -->
 配料：
 <select id="topping">
   <option>無</option>
@@ -45,8 +56,16 @@ button { margin: 5px; padding: 8px; }
   <option>棉花糖</option>
 </select>
 
+份數：
+<select id="toppingQty">
+  <option value="0">0</option>
+  <option value="1">1</option>
+  <option value="2">2</option>
+</select>
+
 <br><br>
 
+<!-- 鯛魚燒 -->
 鯛魚燒：
 <select id="taiyaki">
   <option>無</option>
@@ -54,13 +73,28 @@ button { margin: 5px; padding: 8px; }
   <option>卡士達</option>
 </select>
 
+份數：
+<select id="taiyakiQty">
+  <option value="0">0</option>
+  <option value="1">1</option>
+  <option value="2">2</option>
+</select>
+
 <br><br>
 
+<!-- 鬆餅 -->
 鬆餅：
 <select id="waffle">
   <option>無</option>
   <option>淋巧克力醬</option>
   <option>不淋巧克力醬</option>
+</select>
+
+份數：
+<select id="waffleQty">
+  <option value="0">0</option>
+  <option value="1">1</option>
+  <option value="2">2</option>
 </select>
 
 <br><br>
@@ -125,7 +159,7 @@ function show(){
 
 
 // ======================
-// 🧾 送出訂單（編號 + 時間）
+// 🧾 送出訂單
 // ======================
 function sendOrder(){
 
@@ -141,10 +175,19 @@ function sendOrder(){
 
     db.ref("orders").push({
       orderNo: count,
+
       ice: ice.value,
+      iceQty: iceQty.value,
+
       topping: topping.value,
+      toppingQty: toppingQty.value,
+
       taiyaki: taiyaki.value,
+      taiyakiQty: taiyakiQty.value,
+
       waffle: waffle.value,
+      waffleQty: waffleQty.value,
+
       time: time,
       done: false
     });
@@ -155,7 +198,7 @@ function sendOrder(){
 
 
 // ======================
-// 📡 即時訂單（防炸版）
+// 📡 即時訂單（防炸）
 // ======================
 db.ref("orders").on("value", snap => {
 
@@ -169,10 +212,11 @@ db.ref("orders").on("value", snap => {
       <div>
         <b>📦 #${o.orderNo}</b><br>
         ⏰ ${o.time}<br>
-        🍦 ${o.ice}<br>
-        🍦配料：${o.topping}<br>
-        🐟 ${o.taiyaki}<br>
-        🧇 ${o.waffle}<br>
+
+        🍦 ${o.ice} x ${o.iceQty}<br>
+        🍫 配料：${o.topping} x ${o.toppingQty}<br>
+        🐟 ${o.taiyaki} x ${o.taiyakiQty}<br>
+        🧇 ${o.waffle} x ${o.waffleQty}<br>
 
         <button onclick="done('${id}')">
           ${o.done ? "✔已完成" : "完成"}
