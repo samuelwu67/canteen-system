@@ -187,9 +187,29 @@ function del(id){
   }
 }
 
-window.onload = function() {
-  show();
-};
+function show(){
+  const role = localStorage.getItem("role");
+
+  // 👉 先全部隱藏
+  document.getElementById("choose").style.display = "none";
+  document.getElementById("front").style.display = "none";
+  document.getElementById("back").style.display = "none";
+
+  // 👉 沒選角色 → 顯示選單
+  if(!role){
+    document.getElementById("choose").style.display = "block";
+    return;
+  }
+
+  // 👉 已選角色
+  if(role === "front"){
+    document.getElementById("front").style.display = "block";
+  }
+
+  if(role === "back"){
+    document.getElementById("back").style.display = "block";
+  }
+}
 
 </script>
 
