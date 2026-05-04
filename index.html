@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>園遊會點餐系統 - 最終整合修正版</title>
+<title>園遊會點餐系統 - 最終整合版</title>
 
 <style>
   body { font-family: Arial, "Microsoft JhengHei"; background: #f0f2f5; padding: 15px; margin: 0; font-size: 18px; }
@@ -21,7 +21,7 @@
   button.red { background: #e74c3c; }
   button.gray { background: #95a5a6; font-size: 14px; width: auto; padding: 5px 15px; }
 
-  select, input { width: 100%; padding: 10px; margin: 5px 0 15px 0; font-size: 18px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; }
+  select, input { width: 100%; padding: 10px; margin: 5px 0 15px 0; font-size: 18px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; background: white; }
   .item-row { border-bottom: 1px dashed #eee; padding: 8px 0; font-size: 16px; line-height: 1.5; }
   .wait-text { color: #e74c3c; font-weight: bold; font-size: 14px; }
 </style>
@@ -45,8 +45,7 @@
     <button class="gray" onclick="setRole('')">切換身分</button>
   </div>
 
-  👤 指名：
-  <input type="text" id="c_name" placeholder="例如：小明 / 3號桌">
+  <p style="color:#666; font-size: 14px;">📝 系統會自動分配訂單編號</p>
 
   🍦 冰淇淋：
   <select id="c_ice">
@@ -80,7 +79,7 @@
     <h3>📋 內場訂單清單</h3>
     <button class="gray" onclick="setRole('')">切換身分</button>
   </div>
-  <div id="orders">正在載入訂單...</div>
+  <div id="orders">正在同步訂單...</div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -115,37 +114,36 @@ function showUI(){
 
 function sendOrder(){
   const btn = document.getElementById("btnSend");
-  const nameVal = document.getElementById("c_name").value || "未填";
-  
   btn.disabled = true;
   btn.innerText = "傳送中...";
 
-  const now = new Date();
-  const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  // 獲取當前訂單數來決定自動編號
+  db.ref("orders").once("value", snap => {
+    const orderNum = snap.numChildren() + 1;
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 
-  db.ref("orders").push({
-    name: nameVal,
-    ice: document.getElementById("c_ice").value,
-    iceQty: document.getElementById("c_iceQty").value,
-    top: document.getElementById("c_top").value,
-    tai: document.getElementById("c_tai").value,
-    taiQty: document.getElementById("c_taiQty").value,
-    time: timeStr,
-    timestamp: Date.now(),
-    done: false
-  }).then(() => {
-    alert("✅ 訂單 #" + nameVal + " 已送出");
-    document.getElementById("c_name").value = "";
-    btn.disabled = false;
-    btn.innerText = "📦 送出訂單";
-  }).catch(e => {
-    alert("錯誤：" + e.message);
-    btn.disabled = false;
-    btn.innerText = "📦 送出訂單";
+    db.ref("orders").push({
+      orderNo: orderNum,
+      ice: document.getElementById("c_ice").value,
+      iceQty: document.getElementById("c_iceQty").value,
+      top: document.getElementById("c_top").value,
+      tai: document.getElementById("c_tai").value,
+      taiQty: document.getElementById("c_taiQty").value,
+      time: timeStr,
+      timestamp: Date.now(),
+      done: false
+    }).then(() => {
+      alert("✅ 訂單 #" + orderNum + " 已送出");
+      btn.disabled = false;
+      btn.innerText = "📦 送出訂單";
+    }).catch(e => {
+      alert("錯誤：" + e.message);
+      btn.disabled = false;
+    });
   });
 }
 
-// 內場監聽
 db.ref("orders").on("value", snap => {
   const data = snap.val() || {};
   let html = "";
@@ -161,32 +159,32 @@ db.ref("orders").on("value", snap => {
     const waitMin = Math.floor((now - o.timestamp) / 60000);
     const statusClass = o.done ? "order-done" : (waitMin >= 10 ? "order-urgent" : "order-wait");
 
-    // 格式化顯示內容 (避免顯示數量為 0 的項目)
-    let iceInfo = (o.iceQty > 0) ? `🍦 ${o.ice} x ${o.iceQty} (${o.top})` : "";
-    let taiInfo = (o.taiQty > 0) ? `🐟 ${o.tai} x ${o.taiQty}` : "";
+    // 確保顯示內容正確，若為 undefined 顯示空白
+    let iceDisplay = (o.ice && o.ice !== "無" && o.iceQty > 0) ? `🍦 ${o.ice} x ${o.iceQty} (${o.top || '無'})` : "";
+    let taiDisplay = (o.tai && o.tai !== "無" && o.taiQty > 0) ? `🐟 ${o.tai} x ${o.taiQty}` : "";
     
     html += `
       <div class="box ${statusClass}">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <b>👤 ${o.name}</b>
+          <b>🔢 訂單編號：#${o.orderNo || '新'}</b>
           <span class="wait-text">${o.done ? "已完成" : "等待 " + waitMin + " 分鐘"}</span>
         </div>
         <div class="item-row">
-          ${iceInfo} ${iceInfo && taiInfo ? "<br>" : ""}
-          ${taiInfo}
-          ${!iceInfo && !taiInfo ? "⚠️ 未點購任何餐點" : ""}
+          ${iceDisplay} ${iceDisplay && taiDisplay ? "<br>" : ""}
+          ${taiDisplay}
+          ${!iceDisplay && !taiDisplay ? "⚠️ 未選擇餐點" : ""}
         </div>
-        <div style="font-size:12px; color:#888; margin-top:5px;">🕒 下單時間：${o.time}</div>
+        <div style="font-size:12px; color:#888; margin-top:5px;">🕒 下單時間：${o.time || '未知'}</div>
         <div style="display:flex; gap:10px; margin-top:10px;">
           <button onclick="toggleDone('${id}', ${o.done})" style="background:${o.done ? '#95a5a6' : '#4CAF50'}; padding:8px;">
-            ${o.done ? "恢復為未完成" : "✅ 點擊完成"}
+            ${o.done ? "恢復" : "✅ 完成"}
           </button>
-          <button onclick="del('${id}')" class="red" style="width:100px; padding:8px;">🗑️ 刪除</button>
+          <button onclick="del('${id}')" class="red" style="width:100px; padding:8px;">🗑️ 徹底刪除</button>
         </div>
       </div>
     `;
   });
-  document.getElementById("orders").innerHTML = html || "<p style='text-align:center;'>☕ 目前沒有訂單</p>";
+  document.getElementById("orders").innerHTML = html || "<p style='text-align:center;'>目前沒有訂單</p>";
 });
 
 function toggleDone(id, cur){
@@ -194,7 +192,7 @@ function toggleDone(id, cur){
 }
 
 function del(id){
-  if(confirm("⚠ 注意：確定要【徹底刪除】這筆訂單嗎？\n刪除後資料將無法找回。")){
+  if(confirm("❗ 確定要【徹底刪除】這筆訂單嗎？\n資料刪除後將無法恢復。")){
     db.ref("orders/"+id).remove();
   }
 }
