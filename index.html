@@ -23,12 +23,12 @@ h2{text-align:center;}
 }
 
 button{
-  padding:10px;
-  margin:5px;
+  padding:12px;
+  margin:5px 0;
   width:100%;
   font-size:18px;
   border:none;
-  border-radius:8px;
+  border-radius:10px;
   background:#4CAF50;
   color:white;
 }
@@ -43,6 +43,7 @@ select{
   margin:5px 0;
   font-size:16px;
 }
+
 </style>
 
 </head>
@@ -52,9 +53,18 @@ select{
 <h2>🍦 園遊會點餐系統</h2>
 
 <!-- ====================== -->
-<!-- 外場 -->
+<!-- 🎭 選身分（一定要有） -->
 <!-- ====================== -->
-<div id="front" class="box">
+<div id="choose" class="box">
+  <h3>請選擇身分</h3>
+  <button onclick="setRole('front')">我是外場</button>
+  <button onclick="setRole('back')">我是內場</button>
+</div>
+
+<!-- ====================== -->
+<!-- 🍦 外場 -->
+<!-- ====================== -->
+<div id="front" style="display:none;" class="box">
 
 <h3>外場點餐</h3>
 
@@ -66,22 +76,24 @@ select{
 </div>
 
 <!-- ====================== -->
-<!-- 內場 -->
+<!-- 📋 內場 -->
 <!-- ====================== -->
-<div id="back" class="box" style="display:none;">
+<div id="back" style="display:none;" class="box">
+
 <h3>內場訂單</h3>
 <div id="orders"></div>
+
 </div>
 
 <!-- ====================== -->
-<!-- Firebase -->
+<!-- 🔥 Firebase -->
 <!-- ====================== -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
 <script>
 
-// 🔥 Firebase
+// 🔥 Firebase（記得換）
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_AUTH_DOMAIN",
@@ -93,6 +105,36 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 let items = [];
+
+
+// ======================
+// 🎭 角色系統（修好版）
+// ======================
+function setRole(role){
+  localStorage.setItem("role", role);
+  show();
+}
+
+function show(){
+
+  const role = localStorage.getItem("role");
+
+  const choose = document.getElementById("choose");
+  const front = document.getElementById("front");
+  const back = document.getElementById("back");
+
+  choose.style.display = "none";
+  front.style.display = "none";
+  back.style.display = "none";
+
+  if(!role){
+    choose.style.display = "block";
+    return;
+  }
+
+  if(role === "front") front.style.display = "block";
+  if(role === "back") back.style.display = "block";
+}
 
 
 // ======================
@@ -127,7 +169,7 @@ function addItem(){
 
 
 // ======================
-// ❌ 刪除餐點
+// ❌ 刪除單筆餐點
 // ======================
 function removeItem(id){
   document.getElementById("item-"+id).remove();
@@ -136,7 +178,7 @@ function removeItem(id){
 
 
 // ======================
-// 🍽 類別切換
+// 🍽 類別切換（冰淇淋連動配料）
 // ======================
 function updateType(id, type){
 
@@ -267,7 +309,6 @@ function sendOrder(){
 
   }catch(err){
     alert("錯誤：" + err.message);
-    console.log(err);
   }
 }
 
@@ -316,10 +357,14 @@ function done(id){
 
 // 🗑 刪除
 function del(id){
-  if(confirm("刪除？")){
+  if(confirm("確定刪除？")){
     db.ref("orders/"+id).remove();
   }
 }
+
+
+// 🚀 初始化
+show();
 
 </script>
 
