@@ -29,6 +29,7 @@ button { margin: 5px; padding: 8px; }
 
 冰淇淋：
 <select id="ice">
+  <option>無</option>
   <option>原味</option>
   <option>巧克力</option>
   <option>草莓</option>
@@ -48,6 +49,7 @@ button { margin: 5px; padding: 8px; }
 
 鯛魚燒：
 <select id="taiyaki">
+  <option>無</option>
   <option>巧克力</option>
   <option>卡士達</option>
 </select>
@@ -56,6 +58,7 @@ button { margin: 5px; padding: 8px; }
 
 鬆餅：
 <select id="waffle">
+  <option>無</option>
   <option>淋巧克力醬</option>
   <option>不淋巧克力醬</option>
 </select>
@@ -78,7 +81,7 @@ button { margin: 5px; padding: 8px; }
 <script>
 
 // ======================
-// 🔥 Firebase（換成你的）
+// 🔥 Firebase（請換成你的）
 // ======================
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
@@ -122,7 +125,7 @@ function show(){
 
 
 // ======================
-// 🧾 送出訂單（編號+時間）
+// 🧾 送出訂單（編號 + 時間）
 // ======================
 function sendOrder(){
 
@@ -166,12 +169,13 @@ db.ref("orders").on("value", snap => {
       <div>
         <b>📦 #${o.orderNo}</b><br>
         ⏰ ${o.time}<br>
-        🍦 ${o.ice} + ${o.topping}<br>
+        🍦 ${o.ice}<br>
+        🍦配料：${o.topping}<br>
         🐟 ${o.taiyaki}<br>
         🧇 ${o.waffle}<br>
 
         <button onclick="done('${id}')">
-          ${o.done ? "✔完成" : "完成"}
+          ${o.done ? "✔已完成" : "完成"}
         </button>
 
         <button onclick="del('${id}')" style="color:red;">
