@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>園遊會點餐系統 - 最終整合版</title>
+<title>園遊會點餐系統 - 動態整合版</title>
 
 <style>
   body { font-family: Arial, "Microsoft JhengHei"; background: #f0f2f5; padding: 15px; margin: 0; font-size: 18px; }
@@ -20,10 +20,15 @@
   button.blue { background: #2196F3; }
   button.red { background: #e74c3c; }
   button.gray { background: #95a5a6; font-size: 14px; width: auto; padding: 5px 15px; }
+  button.add-btn { background: #673ab7; margin-bottom: 15px; }
 
-  select, input { width: 100%; padding: 10px; margin: 5px 0 15px 0; font-size: 18px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; background: white; }
+  select, input { width: 100%; padding: 10px; margin: 5px 0 10px 0; font-size: 18px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; background: white; }
   .item-row { border-bottom: 1px dashed #eee; padding: 8px 0; font-size: 16px; line-height: 1.5; }
   .wait-text { color: #e74c3c; font-weight: bold; font-size: 14px; }
+  
+  /* 動態餐點區塊樣式 */
+  .dish-block { border: 2px solid #eee; padding: 10px; margin-bottom: 10px; border-radius: 8px; position: relative; }
+  .del-dish { position: absolute; top: 5px; right: 5px; background: #ff5252; width: 30px; height: 30px; padding: 0; line-height: 30px; border-radius: 50%; }
 </style>
 </head>
 
@@ -41,36 +46,16 @@
 <!-- 🛒 外場介面 -->
 <div id="front" style="display:none;" class="box">
   <div style="display:flex; justify-content: space-between; align-items: center;">
-    <h3>外場點餐</h3>
+    <h3>🛒 外場點餐</h3>
     <button class="gray" onclick="setRole('')">切換身分</button>
   </div>
+  <p style="color:#666; font-size: 14px;">📝 點擊按鈕新增餐點，系統會自動編號</p>
 
-  <p style="color:#666; font-size: 14px;">📝 系統會自動分配訂單編號</p>
+  <!-- 餐點清單容器 -->
+  <div id="dishContainer"></div>
 
-  🍦 冰淇淋：
-  <select id="c_ice">
-    <option value="無">無</option><option value="原味">原味</option><option value="巧克力">巧克力</option><option value="草莓">草莓</option>
-  </select>
-  份數：
-  <select id="c_iceQty">
-    <option value="0">0</option><option value="1">1</option><option value="2">2</option>
-  </select>
-
-  🍫 配料：
-  <select id="c_top">
-    <option value="無">無</option><option value="巧克力脆片">巧克力脆片</option><option value="棉花糖">棉花糖</option>
-  </select>
-
-  🐟 鯛魚燒：
-  <select id="c_tai">
-    <option value="無">無</option><option value="巧克力">巧克力</option><option value="卡士達">卡士達</option>
-  </select>
-  份數：
-  <select id="c_taiQty">
-    <option value="0">0</option><option value="1">1</option><option value="2">2</option>
-  </select>
-
-  <button onclick="sendOrder()" class="blue" id="btnSend">📦 送出訂單</button>
+  <button class="add-btn" onclick="addDish()">➕ 新增餐點</button>
+  <button onclick="sendOrder()" class="blue" id="btnSend">📦 送出完整訂單</button>
 </div>
 
 <!-- 👨‍🍳 內場介面 -->
@@ -99,9 +84,14 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+// 🎭 角色邏輯
 function setRole(r){
   if(!r) localStorage.removeItem("role");
   else localStorage.setItem("role", r);
+  if(r === 'front') { 
+    document.getElementById('dishContainer').innerHTML = ''; // 清空舊的
+    addDish(); // 預設新增一個
+  }
   showUI();
 }
 
@@ -112,12 +102,103 @@ function showUI(){
   document.getElementById("back").style.display = r === "back" ? "block" : "none";
 }
 
+// ➕ 動態新增餐點區塊
+let dishCount = 0;
+function addDish() {
+  dishCount++;
+  const div = document.createElement('div');
+  div.className = 'dish-block';
+  div.id = `block_${dishCount}`;
+  div.innerHTML = `
+    <button class="del-dish" onclick="this.parentElement.remove()">×</button>
+    🍴 選擇餐點種類：
+    <select class="main-type" onchange="updateSubOptions(${dishCount})">
+      <option value="無">-- 請選擇 --</option>
+      <option value="冰淇淋">🍦 冰淇淋</option>
+      <option value="鬆餅">🧇 鬆餅</option>
+      <option value="鯛魚燒">🐟 鯛魚燒</option>
+    </select>
+
+    <div id="sub_${dishCount}"></div>
+    
+    份數：
+    <select class="qty">
+      ${[1,2,3,4,5].map(n => `<option value="${n}">${n}</option>`).join('')}
+    </select>
+  `;
+  document.getElementById('dishContainer').appendChild(div);
+}
+
+// 🔄 更新子選項（冰淇淋配料、口味等）
+function updateSubOptions(id) {
+  const type = document.querySelector(`#block_${id} .main-type`).value;
+  const subDiv = document.getElementById(`sub_${id}`);
+  
+  if (type === "冰淇淋") {
+    subDiv.innerHTML = `
+      口味：
+      <select class="flavor">
+        <option value="無">無</option>
+        <option value="原味">原味</option>
+        <option value="草莓">草莓</option>
+        <option value="巧克力">巧克力</option>
+      </select>
+      加配料：
+      <select class="extra">
+        <option value="無">無</option>
+        <option value="棉花糖">棉花糖</option>
+        <option value="巧克力脆片">巧克力脆片</option>
+        <option value="巧克力脆笛酥">巧克力脆笛酥</option>
+      </select>
+    `;
+  } else if (type === "鬆餅") {
+    subDiv.innerHTML = `
+      選項：
+      <select class="flavor">
+        <option value="無">無</option>
+        <option value="加巧克力醬">加巧克力醬</option>
+        <option value="不加巧克力醬">不加巧克力醬</option>
+      </select>
+      <input type="hidden" class="extra" value="無">
+    `;
+  } else if (type === "鯛魚燒") {
+    subDiv.innerHTML = `
+      口味：
+      <select class="flavor">
+        <option value="無">無</option>
+        <option value="卡士達">卡士達</option>
+        <option value="巧克力">巧克力</option>
+      </select>
+      <input type="hidden" class="extra" value="無">
+    `;
+  } else {
+    subDiv.innerHTML = '';
+  }
+}
+
+// 📦 送出訂單
 function sendOrder(){
   const btn = document.getElementById("btnSend");
+  const blocks = document.querySelectorAll('.dish-block');
+  if(blocks.length === 0) return alert("請至少新增一項餐點！");
+
+  let items = [];
+  blocks.forEach(b => {
+    const type = b.querySelector('.main-type').value;
+    const flavor = b.querySelector('.flavor') ? b.querySelector('.flavor').value : "無";
+    const extra = b.querySelector('.extra') ? b.querySelector('.extra').value : "無";
+    const qty = b.querySelector('.qty').value;
+    
+    if(type !== "無") {
+      items.push({ type, flavor, extra, qty });
+    }
+  });
+
+  if(items.length === 0) return alert("餐點內容不可為空！");
+
   btn.disabled = true;
   btn.innerText = "傳送中...";
 
-  // 獲取當前訂單數來決定自動編號
   db.ref("orders").once("value", snap => {
     const orderNum = snap.numChildren() + 1;
     const now = new Date();
@@ -125,25 +206,21 @@ function sendOrder(){
 
     db.ref("orders").push({
       orderNo: orderNum,
-      ice: document.getElementById("c_ice").value,
-      iceQty: document.getElementById("c_iceQty").value,
-      top: document.getElementById("c_top").value,
-      tai: document.getElementById("c_tai").value,
-      taiQty: document.getElementById("c_taiQty").value,
+      items: items,
       time: timeStr,
       timestamp: Date.now(),
       done: false
     }).then(() => {
       alert("✅ 訂單 #" + orderNum + " 已送出");
+      document.getElementById('dishContainer').innerHTML = '';
+      addDish();
       btn.disabled = false;
-      btn.innerText = "📦 送出訂單";
-    }).catch(e => {
-      alert("錯誤：" + e.message);
-      btn.disabled = false;
+      btn.innerText = "📦 送出完整訂單";
     });
   });
 }
 
+// 📡 內場監聽
 db.ref("orders").on("value", snap => {
   const data = snap.val() || {};
   let html = "";
@@ -159,27 +236,25 @@ db.ref("orders").on("value", snap => {
     const waitMin = Math.floor((now - o.timestamp) / 60000);
     const statusClass = o.done ? "order-done" : (waitMin >= 10 ? "order-urgent" : "order-wait");
 
-    // 確保顯示內容正確，若為 undefined 顯示空白
-    let iceDisplay = (o.ice && o.ice !== "無" && o.iceQty > 0) ? `🍦 ${o.ice} x ${o.iceQty} (${o.top || '無'})` : "";
-    let taiDisplay = (o.tai && o.tai !== "無" && o.taiQty > 0) ? `🐟 ${o.tai} x ${o.taiQty}` : "";
-    
+    let itemsHtml = "";
+    o.items.forEach(it => {
+      let extraText = it.extra !== "無" ? ` + ${it.extra}` : "";
+      itemsHtml += `<div class="item-row">${it.type} (${it.flavor})${extraText} x <b>${it.qty}</b></div>`;
+    });
+
     html += `
       <div class="box ${statusClass}">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <b>🔢 訂單編號：#${o.orderNo || '新'}</b>
-          <span class="wait-text">${o.done ? "已完成" : "等待 " + waitMin + " 分鐘"}</span>
+          <b>🔢 訂單：#${o.orderNo}</b>
+          <span class="wait-text">${o.done ? "已完成" : "等候 " + waitMin + " 分"}</span>
         </div>
-        <div class="item-row">
-          ${iceDisplay} ${iceDisplay && taiDisplay ? "<br>" : ""}
-          ${taiDisplay}
-          ${!iceDisplay && !taiDisplay ? "⚠️ 未選擇餐點" : ""}
-        </div>
-        <div style="font-size:12px; color:#888; margin-top:5px;">🕒 下單時間：${o.time || '未知'}</div>
+        ${itemsHtml}
+        <div style="font-size:12px; color:#888; margin-top:5px;">🕒 下單時間：${o.time}</div>
         <div style="display:flex; gap:10px; margin-top:10px;">
           <button onclick="toggleDone('${id}', ${o.done})" style="background:${o.done ? '#95a5a6' : '#4CAF50'}; padding:8px;">
             ${o.done ? "恢復" : "✅ 完成"}
           </button>
-          <button onclick="del('${id}')" class="red" style="width:100px; padding:8px;">🗑️ 徹底刪除</button>
+          <button onclick="del('${id}')" class="red" style="width:100px; padding:8px;">🗑️ 刪除</button>
         </div>
       </div>
     `;
@@ -187,15 +262,8 @@ db.ref("orders").on("value", snap => {
   document.getElementById("orders").innerHTML = html || "<p style='text-align:center;'>目前沒有訂單</p>";
 });
 
-function toggleDone(id, cur){
-  db.ref("orders/"+id).update({ done: !cur });
-}
-
-function del(id){
-  if(confirm("❗ 確定要【徹底刪除】這筆訂單嗎？\n資料刪除後將無法恢復。")){
-    db.ref("orders/"+id).remove();
-  }
-}
+function toggleDone(id, cur){ db.ref("orders/"+id).update({ done: !cur }); }
+function del(id){ if(confirm("確定徹底刪除嗎？")) db.ref("orders/"+id).remove(); }
 
 showUI();
 </script>
