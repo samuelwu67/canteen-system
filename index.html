@@ -3,193 +3,139 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>園遊會點餐系統 - 最終整合版</title>
-
+<title>園遊會點餐系統</title>
 <style>
-  body { font-family: Arial, "Microsoft JhengHei"; background: #f0f2f5; padding: 15px; margin: 0; font-size: 18px; }
-  h2 { text-align: center; color: #2c3e50; }
-  .box { background: white; padding: 15px; margin: 10px 0; border-radius: 12px; border: 1px solid #ddd; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-  
-  /* 內場訂單狀態 */
-  .order-done { background: #e8f5e9 !important; border-left: 8px solid #4CAF50; opacity: 0.7; }
-  .order-wait { border-left: 8px solid #ff9800; }
-  .order-urgent { border-left: 8px solid #e74c3c; background: #fff5f5; }
-
-  button { width: 100%; padding: 12px; margin-top: 8px; border: none; border-radius: 10px; font-size: 18px; cursor: pointer; color: white; background: #4CAF50; }
-  button:active { transform: scale(0.95); }
-  button.blue { background: #2196F3; }
-  button.red { background: #e74c3c; }
-  button.gray { background: #95a5a6; font-size: 14px; width: auto; padding: 5px 15px; }
-
-  select, input { width: 100%; padding: 10px; margin: 5px 0 15px 0; font-size: 18px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; }
-  .item-row { border-bottom: 1px dashed #eee; padding: 8px 0; font-size: 16px; }
-  .wait-text { color: #e74c3c; font-weight: bold; font-size: 14px; }
+  body { font-family: Arial, "Microsoft JhengHei"; background: #f7f7f7; padding: 15px; font-size: 18px; }
+  .box { background: white; border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 12px; }
+  button { font-size: 18px; padding: 10px; width: 100%; margin-top: 10px; border: none; border-radius: 8px; cursor: pointer; color: white; }
+  .btn-done { background: #4CAF50; }
+  .btn-undo { background: #95a5a6; }
+  .btn-del { background: #e74c3c; margin-top: 5px; }
+  .order-item { border-bottom: 1px dashed #ccc; padding: 10px 0; }
+  .finished { opacity: 0.6; background: #eee !important; }
 </style>
 </head>
-
 <body>
 
-<h2>🍦 園遊會點餐系統</h2>
-
-<!-- 🎭 角色切換 -->
-<div id="roleBox" class="box">
-  <h3>請選擇身分</h3>
-  <button onclick="setRole('front')">我是外場 (點餐)</button>
-  <button onclick="setRole('back')" class="blue">我是內場 (出餐)</button>
+<div id="roleChoose" class="box">
+  <h2>🍦 園遊會點餐系統</h2>
+  <button onclick="setRole('front')" style="background:#2196F3;">我是外場 (點餐)</button>
+  <button onclick="setRole('back')" style="background:#4CAF50;">我是內場 (出餐)</button>
 </div>
 
-<!-- 🛒 外場介面 -->
+<!-- 外場 -->
 <div id="front" style="display:none;" class="box">
-  <div style="display:flex; justify-content: space-between;">
-    <h3>外場點餐</h3>
-    <button class="gray" onclick="setRole('')">切換身分</button>
-  </div>
-
-  👤 指名：
-  <input type="text" id="c_name" placeholder="例如：小明 / 3號桌">
-
+  <h3>外場點餐</h3>
+  👤 指名：<input type="text" id="name" style="width:90%; padding:8px; margin-bottom:10px;">
+  <br>
   🍦 冰淇淋：
-  <select id="c_ice">
-    <option>無</option><option>原味</option><option>巧克力</option><option>草莓</option>
-  </select>
-  份數：
-  <select id="c_iceQty">
-    <option value="0">0</option><option value="1">1</option><option value="2">2</option>
-  </select>
-
-  🍫 配料：
-  <select id="c_top">
-    <option>無</option><option>巧克力脆片</option><option>棉花糖</option>
-  </select>
-
+  <select id="ice"><option>無</option><option>原味</option><option>巧克力</option></select>
+  數量：<select id="iceQty"><option>0</option><option>1</option><option>2</option></select>
+  <br>
   🐟 鯛魚燒：
-  <select id="c_tai">
-    <option>無</option><option>巧克力</option><option>卡士達</option>
-  </select>
-  份數：
-  <select id="c_taiQty">
-    <option value="0">0</option><option value="1">1</option><option value="2">2</option>
-  </select>
-
-  <button onclick="sendOrder()" class="blue" id="btnSend">📦 送出訂單</button>
+  <select id="tai"><option>無</option><option>巧克力</option><option>卡士達</option></select>
+  數量：<select id="taiQty"><option>0</option><option>1</option><option>2</option></select>
+  <button onclick="sendOrder()" style="background:#2196F3;">📦 送出訂單</button>
+  <button onclick="setRole('')" style="background:gray;">切換身分</button>
 </div>
 
-<!-- 👨‍🍳 內場介面 -->
+<!-- 內場 -->
 <div id="back" style="display:none;" class="box">
-  <div style="display:flex; justify-content: space-between;">
-    <h3>📋 內場訂單</h3>
-    <button class="gray" onclick="setRole('')">切換身分</button>
-  </div>
+  <h3>📋 內場訂單清單</h3>
   <div id="orders">讀取中...</div>
+  <button onclick="setRole('')" style="background:gray;">切換身分</button>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
 <script>
-// 🔥 這是你的正確配置
 const firebaseConfig = {
     apiKey: "AIzaSyDU5jL0jVeOQI2ixqaYeOO7vEstHiXhv_I",
     authDomain: "canteen-system-41c48.firebaseapp.com",
     databaseURL: "https://canteen-system-41c48-default-rtdb.asia-southeast1.firebasedatabase.app/",
-    projectId: "canteen-system-41c48",
-    storageBucket: "canteen-system-41c48.firebasestorage.app",
-    messagingSenderId: "135011225815",
-    appId: "1:135011225815:web:44804a05a0ca4d8922a092"
+    projectId: "canteen-system-41c48"
 };
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// 🎭 角色切換
 function setRole(r){
-  if(!r) localStorage.removeItem("role");
-  else localStorage.setItem("role", r);
-  showUI();
+  localStorage.setItem("role", r);
+  location.reload(); 
 }
 
-function showUI(){
-  const r = localStorage.getItem("role");
-  document.getElementById("roleBox").style.display = r ? "none" : "block";
-  document.getElementById("front").style.display = r === "front" ? "block" : "none";
-  document.getElementById("back").style.display = r === "back" ? "block" : "none";
+const role = localStorage.getItem("role");
+if(role){
+  document.getElementById("roleChoose").style.display = "none";
+  document.getElementById(role).style.display = "block";
 }
 
-// 📦 送出訂單
+// 送出訂單
 function sendOrder(){
-  const btn = document.getElementById("btnSend");
-  btn.disabled = true;
-  btn.innerText = "傳送中...";
-
-  const now = new Date();
-  const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-
-  db.ref("orders").push({
-    name: document.getElementById("c_name").value || "未填",
-    ice: document.getElementById("c_ice").value,
-    iceQty: document.getElementById("c_iceQty").value,
-    top: document.getElementById("c_top").value,
-    tai: document.getElementById("c_tai").value,
-    taiQty: document.getElementById("c_taiQty").value,
-    time: timeStr,
+  const orderData = {
+    name: document.getElementById("name").value || "未填",
+    ice: document.getElementById("ice").value,
+    iceQty: document.getElementById("iceQty").value,
+    tai: document.getElementById("tai").value,
+    taiQty: document.getElementById("taiQty").value,
+    time: new Date().toLocaleTimeString(),
     timestamp: Date.now(),
     done: false
-  }).then(() => {
-    alert("✅ 訂單已送出");
-    btn.disabled = false;
-    btn.innerText = "📦 送出訂單";
-  }).catch(e => alert("錯誤：" + e.message));
+  };
+
+  db.ref("orders").push(orderData).then(() => {
+    alert("訂單已送出！");
+    document.getElementById("name").value = "";
+  });
 }
 
-// 📡 內場即時監聽
-db.ref("orders").on("value", snap => {
-  const data = snap.val() || {};
-  let html = "";
-  const now = Date.now();
+// 內場即時顯示
+if(role === 'back'){
+  db.ref("orders").on("value", snap => {
+    const data = snap.val() || {};
+    let html = "";
+    
+    // 依時間排序
+    const keys = Object.keys(data).sort((a,b) => data[a].timestamp - data[b].timestamp);
 
-  // 排序：未完成的且舊的排上面
-  const sortedKeys = Object.keys(data).sort((a,b) => {
-    if(data[a].done === data[b].done) return data[a].timestamp - data[b].timestamp;
-    return data[a].done ? 1 : -1;
-  });
+    keys.forEach(id => {
+      const o = data[id];
+      // 檢查數據是否存在，防止 undefined
+      const iceStr = (o.ice && o.ice !== "無") ? `🍦 ${o.ice} x ${o.iceQty}` : "";
+      const taiStr = (o.tai && o.tai !== "無") ? `🐟 ${o.tai} x ${o.taiQty}` : "";
 
-  sortedKeys.forEach(id => {
-    const o = data[id];
-    const waitMin = Math.floor((now - o.timestamp) / 60000);
-    const statusClass = o.done ? "order-done" : (waitMin >= 10 ? "order-urgent" : "order-wait");
-
-    html += `
-      <div class="box ${statusClass}">
-        <div style="display:flex; justify-content:space-between;">
-          <b>👤 ${o.name}</b>
-          <span class="wait-text">${o.done ? "已完成" : "等了 " + waitMin + " 分"}</span>
-        </div>
-        <div class="item-row">
-          🍦 ${o.ice} x ${o.iceQty} (${o.top}) <br>
-          🐟 ${o.tai} x ${o.taiQty}
-        </div>
-        <div style="font-size:12px; color:#888; margin-top:5px;">下單時間：${o.time}</div>
-        <div style="display:flex; gap:10px; margin-top:10px;">
-          <button onclick="toggleDone('${id}', ${o.done})" style="background:${o.done ? '#95a5a6' : '#4CAF50'}; padding:8px;">
-            ${o.done ? "恢復" : "完成"}
+      html += `
+        <div class="box ${o.done ? 'finished' : ''}">
+          <b>👤 ${o.name}</b> <small>(${o.time})</small><br>
+          <div style="margin: 10px 0;">
+            ${iceStr} ${iceStr && taiStr ? '<br>' : ''} ${taiStr}
+          </div>
+          <button class="${o.done ? 'btn-undo' : 'btn-done'}" onclick="toggleDone('${id}', ${o.done})">
+            ${o.done ? "恢復未完成" : "✅ 點擊完成"}
           </button>
-          <button onclick="del('${id}')" class="red" style="width:80px; padding:8px;">刪除</button>
+          <!-- 真的刪除按鈕 -->
+          <button class="btn-del" onclick="realDelete('${id}')">🗑️ 徹底刪除訂單</button>
         </div>
-      </div>
-    `;
+      `;
+    });
+    document.getElementById("orders").innerHTML = html || "目前沒有訂單";
   });
-  document.getElementById("orders").innerHTML = html || "目前沒有訂單";
-});
-
-function toggleDone(id, cur){
-  db.ref("orders/"+id).update({ done: !cur });
 }
 
-function del(id){
-  if(confirm("確定刪除？")) db.ref("orders/"+id).remove();
+// 功能：完成/恢復
+function toggleDone(id, currentStatus){
+  db.ref("orders/" + id).update({ done: !currentStatus });
 }
 
-showUI();
+// 功能：真的刪除 (會從 Firebase 移除)
+function realDelete(id){
+  if(confirm("確定要【徹底刪除】這筆訂單嗎？刪除後無法恢復喔！")){
+    db.ref("orders/" + id).remove()
+      .then(() => alert("訂單已從資料庫移除"))
+      .catch(err => alert("刪除失敗：" + err.message));
+  }
+}
 </script>
 </body>
 </html>
