@@ -3,61 +3,29 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>園遊會點餐系統專業版</title>
+<title>園遊會點餐系統 - 最終專業版</title>
 
 <style>
-body{
-  font-family: "Microsoft JhengHei", sans-serif;
-  font-size:18px;
-  padding:15px;
-  background:#f0f2f5;
-  color: #333;
-}
+  body { font-family: "Microsoft JhengHei", sans-serif; background: #f0f2f5; padding: 15px; margin: 0; }
+  h2 { text-align: center; color: #2c3e50; }
+  
+  .box { background: white; padding: 15px; margin: 10px 0; border-radius: 12px; border: 1px solid #ddd; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+  
+  /* 內場訂單狀態樣式 */
+  .status-tag { font-size: 14px; font-weight: bold; padding: 2px 8px; border-radius: 4px; }
+  .order-done { background: #e8f5e9 !important; border-left: 8px solid #4CAF50; opacity: 0.7; }
+  .order-wait { border-left: 8px solid #ff9800; }
+  .order-urgent { border-left: 8px solid #e74c3c; background: #fff5f5; }
 
-h2{text-align:center; color: #2c3e50;}
+  button { width: 100%; padding: 12px; margin-top: 8px; border: none; border-radius: 10px; font-size: 18px; cursor: pointer; color: white; background: #4CAF50; }
+  button:active { transform: scale(0.98); }
+  button.red { background: #e74c3c; }
+  button.blue { background: #2196F3; }
+  button.gray { background: #95a5a6; font-size: 14px; width: auto; padding: 5px 15px; }
 
-.box{
-  background:white;
-  padding:15px;
-  margin:10px 0;
-  border-radius:12px;
-  border:1px solid #ddd;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-}
-
-/* 狀態顏色區分 */
-.order-done { background: #e8f5e9 !important; border-left: 8px solid #4CAF50; opacity: 0.8; }
-.order-wait { border-left: 8px solid #ff9800; }
-.order-urgent { border-left: 8px solid #e74c3c; background: #fff5f5; }
-
-button{
-  width:100%;
-  padding:12px;
-  margin-top:8px;
-  border:none;
-  border-radius:10px;
-  font-size:18px;
-  background:#4CAF50;
-  color:white;
-  cursor: pointer;
-  transition: 0.3s;
-}
-
-button:active { transform: scale(0.98); }
-button.red{background:#e74c3c;}
-button.gray{background:#95a5a6; font-size: 14px; width: auto; padding: 5px 15px;}
-
-select{
-  width:100%;
-  padding:10px;
-  margin:5px 0;
-  font-size:16px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-}
-
-.time-tag { font-size: 14px; color: #666; display: flex; justify-content: space-between; }
-.wait-min { color: #e74c3c; font-weight: bold; }
+  select { width: 100%; padding: 10px; margin: 5px 0; font-size: 16px; border-radius: 8px; border: 1px solid #ccc; }
+  .item-row { border-bottom: 1px dashed #eee; padding: 8px 0; }
+  .wait-text { color: #e74c3c; font-weight: bold; }
 </style>
 </head>
 
@@ -67,21 +35,21 @@ select{
 
 <!-- 🎭 角色切換 -->
 <div id="roleBox" class="box">
-  <h3>請選擇進入介面</h3>
-  <button id="frontBtn">我是外場 (點餐)</button>
-  <button id="backBtn" style="background:#2196F3;">我是內場 (出餐)</button>
+  <h3>請選擇介面</h3>
+  <button onclick="setRole('front')">我是外場 (點餐)</button>
+  <button onclick="setRole('back')" class="blue">我是內場 (出餐)</button>
 </div>
 
 <!-- 🛒 外場介面 -->
 <div id="front" style="display:none;">
   <div class="box">
     <div style="display:flex; justify-content: space-between; align-items: center;">
-        <h3>外場點餐</h3>
-        <button class="gray" onclick="resetRole()">切換身分</button>
+      <h3>外場點餐</h3>
+      <button class="gray" onclick="setRole('')">切換身分</button>
     </div>
     <div id="cart"></div>
-    <button id="addBtn" style="background:#f39c12;">➕ 新增餐點項目</button>
-    <button id="sendBtn" style="background:#2196F3; margin-top: 20px; font-weight: bold;">📦 送出訂單</button>
+    <button onclick="addItem()" style="background:#f39c12;">➕ 新增餐點項目</button>
+    <button id="sendBtn" class="blue" style="margin-top:20px; font-weight:bold;">📦 送出訂單</button>
   </div>
 </div>
 
@@ -89,8 +57,8 @@ select{
 <div id="back" style="display:none;">
   <div class="box">
     <div style="display:flex; justify-content: space-between; align-items: center;">
-        <h3>內場待出餐清單</h3>
-        <button class="gray" onclick="resetRole()">切換身分</button>
+      <h3>內場訂單清單</h3>
+      <button class="gray" onclick="setRole('')">切換身分</button>
     </div>
     <div id="orders"></div>
   </div>
@@ -101,27 +69,28 @@ select{
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
 <script>
-/* 🔥 Firebase 配置 (請更換為你的金鑰) */
+/* 🔥 Firebase 配置 (請填寫你的真實資料) */
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  databaseURL: "YOUR_DATABASE_URL",
-  projectId: "YOUR_PROJECT_ID"
+  apiKey: "AIzaSyDU5jL0jVeOQI2ixqaYeOO7vEstHiXhv_I",
+    authDomain: "canteen-system-41c48.firebaseapp.com",
+    databaseURL: "https://canteen-system-41c48-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "canteen-system-41c48"
 };
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
-
 const typeNames = { "ice": "冰淇淋", "taiyaki": "鯛魚燒", "waffle": "鬆餅" };
 
 /* ======================
     🎭 角色管理
 ====================== */
-document.getElementById("frontBtn").onclick = () => { localStorage.setItem("role","front"); show(); };
-document.getElementById("backBtn").onclick = () => { localStorage.setItem("role","back"); show(); };
-window.resetRole = () => { localStorage.removeItem("role"); show(); };
+window.setRole = (role) => {
+  if(role === '') localStorage.removeItem("role");
+  else localStorage.setItem("role", role);
+  renderUI();
+};
 
-function show(){
+function renderUI() {
   const role = localStorage.getItem("role");
   document.getElementById("roleBox").style.display = role ? "none" : "block";
   document.getElementById("front").style.display = role === "front" ? "block" : "none";
@@ -131,43 +100,41 @@ function show(){
 /* ======================
     🍽 外場功能
 ====================== */
-document.getElementById("addBtn").onclick = () => {
-  const id = Date.now();
+window.addItem = () => {
   const box = document.createElement("div");
-  box.className = "box";
+  box.className = "box cart-item";
   box.innerHTML = `
-    <strong>餐點類別：</strong>
-    <select class="type">
+    <strong>類別：</strong>
+    <select class="type" onchange="renderOptions(this)">
       <option value="">-- 請選擇 --</option>
       <option value="ice">冰淇淋</option>
       <option value="taiyaki">鯛魚燒</option>
       <option value="waffle">鬆餅</option>
     </select>
     <div class="sub"></div>
-    <button class="red" style="padding:5px; font-size:14px;" onclick="this.parentElement.remove()">❌ 取消這項</button>
+    <button class="red" style="padding:5px; font-size:14px;" onclick="this.parentElement.remove()">❌ 取消</button>
   `;
   document.getElementById("cart").appendChild(box);
-
-  box.querySelector(".type").onchange = (e) => {
-    renderSubOptions(e.target.value, box.querySelector(".sub"));
-  };
 };
 
-function renderSubOptions(type, container){
+window.renderOptions = (selectEl) => {
+  const type = selectEl.value;
+  const container = selectEl.parentElement.querySelector(".sub");
   if(!type) { container.innerHTML = ""; return; }
+  
   let html = `內容：<select class="item">`;
   if(type === "ice") html += `<option>原味</option><option>巧克力</option><option>草莓</option></select>
-      配料：<select class="top"><option>無</option><option>巧克力脆片</option><option>棉花糖</option></select>`;
+    配料：<select class="top"><option>無</option><option>巧克力脆片</option><option>棉花糖</option></select>`;
   if(type === "taiyaki") html += `<option>巧克力</option><option>卡士達</option></select>`;
   if(type === "waffle") html += `<option>巧克力醬</option><option>不淋醬</option></select>`;
   
-  html += `份數：<select class="qty"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>`;
+  html += `份數：<select class="qty"><option>1</option><option>2</option><option>3</option></select>`;
   container.innerHTML = html;
-}
+};
 
 document.getElementById("sendBtn").onclick = () => {
   let orderItems = [];
-  document.querySelectorAll("#cart .box").forEach(box => {
+  document.querySelectorAll(".cart-item").forEach(box => {
     const type = box.querySelector(".type").value;
     if(type) {
       orderItems.push({
@@ -179,84 +146,72 @@ document.getElementById("sendBtn").onclick = () => {
     }
   });
 
-  if(orderItems.length === 0) return alert("購物車是空的！");
+  if(orderItems.length === 0) return alert("請先新增餐點內容");
 
   const now = new Date();
-  // 時間補零優化
   const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
 
   db.ref("orders").push({
     items: orderItems,
     time: timeStr,
-    timestamp: Date.now(), // 用於計算等待時間
+    timestamp: Date.now(),
     done: false
-  }).then(() => {
+  })
+  .then(() => {
     document.getElementById("cart").innerHTML = "";
-    alert("訂單已送出！");
-  });
+    alert("✅ 訂單送出成功！");
+  })
+  .catch(err => alert("❌ 失敗：" + err.message));
 };
 
 /* ======================
-    📡 內場監聽 (含自動排序與時間優化)
+    📡 內場監聽
 ====================== */
 db.ref("orders").on("value", snap => {
   const data = snap.val() || {};
   const nowTs = Date.now();
   let html = "";
 
-  // 排序：未完成的在前，舊訂單(等最久)的在最前
-  const sortedOrders = Object.keys(data).map(id => ({ id, ...data[id] }))
-    .sort((a, b) => {
-      if (a.done !== b.done) return a.done ? 1 : -1;
-      return a.timestamp - b.timestamp;
-    });
+  // 排序邏輯：未完成優先 -> 舊單(等最久)優先
+  const sorted = Object.keys(data).map(id => ({ id, ...data[id] }))
+    .sort((a, b) => (a.done === b.done) ? (a.timestamp - b.timestamp) : (a.done ? 1 : -1));
 
-  sortedOrders.forEach(o => {
-    let listHtml = "";
+  sorted.forEach(o => {
+    let itemsHtml = "";
     o.items.forEach(i => {
-      const topStr = i.top && i.top !== "無" ? `<small>(${i.top})</small>` : "";
-      listHtml += `<div style="padding:5px 0; border-bottom:1px dashed #eee;">🔹 ${i.type} - ${i.item} ${topStr} <strong style="float:right;">x${i.qty}</strong></div>`;
+      itemsHtml += `<div class="item-row">🔹 ${i.type}-${i.item} ${i.top&&i.top!='無'?'('+i.top+')':''} <strong>x${i.qty}</strong></div>`;
     });
 
-    // 計算等待分鐘
     const waitMin = Math.floor((nowTs - o.timestamp) / 60000);
-    const isUrgent = waitMin >= 10 && !o.done; // 超過10分鐘變紅色
-    
-    const statusClass = o.done ? "order-done" : (isUrgent ? "order-urgent" : "order-wait");
+    const statusClass = o.done ? "order-done" : (waitMin >= 10 ? "order-urgent" : "order-wait");
 
     html += `
       <div class="box ${statusClass}">
-        <div class="time-tag">
+        <div style="display:flex; justify-content:space-between; font-size:14px; color:#666;">
           <span>下單時間：${o.time}</span>
-          ${!o.done ? `<span class="wait-min">已等 ${waitMin} 分鐘</span>` : "<span>✅ 已完成</span>"}
+          ${!o.done ? `<span class="wait-text">已等 ${waitMin} 分鐘</span>` : "<span>✅ 已完成</span>"}
         </div>
-        <div style="margin:10px 0;">${listHtml}</div>
+        <div style="margin:10px 0;">${itemsHtml}</div>
         <div style="display:flex; gap:10px;">
-          <button onclick="window.toggleDone('${o.id}', ${o.done})" style="background:${o.done ? '#95a5a6' : '#4CAF50'};">
-            ${o.done ? "恢復為未完成" : "✅ 點擊完成"}
+          <button onclick="toggleDone('${o.id}', ${o.done})" style="background:${o.done ? '#95a5a6' : '#4CAF50'};">
+            ${o.done ? "恢復未完成" : "✅ 點擊完成"}
           </button>
-          <button class="red" style="width:80px;" onclick="window.deleteOrder('${o.id}')">刪除</button>
+          <button class="red" style="width:80px;" onclick="deleteOrder('${o.id}')">刪除</button>
         </div>
       </div>
     `;
   });
-
-  document.getElementById("orders").innerHTML = html || "<p style='text-align:center;'>目前沒有訂單</p>";
+  document.getElementById("orders").innerHTML = html || "<p style='text-align:center;'>暫無訂單</p>";
 });
 
-/* 全域控制函式 */
-window.toggleDone = (id, currentStatus) => {
-  db.ref("orders/" + id).update({ done: !currentStatus });
-};
+/* 全域控制 */
+window.toggleDone = (id, status) => db.ref("orders/" + id).update({ done: !status });
+window.deleteOrder = (id) => { if(confirm("確定刪除？")) db.ref("orders/" + id).remove(); };
 
-window.deleteOrder = (id) => {
-  if(confirm("確定要刪除這筆訂單嗎？")) db.ref("orders/" + id).remove();
-};
+// 每分鐘自動刷新計時器
+setInterval(() => { if(localStorage.getItem("role") === 'back') { /* Firebase 會自動觸發監聽更新畫面 */ } }, 60000);
 
-// 每分鐘自動刷新一次畫面（為了更新「已等幾分鐘」的數字）
-setInterval(() => { if(localStorage.getItem("role") === "back") show(); }, 60000);
-
-show();
+renderUI();
 </script>
 
 </body>
