@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>園遊會點餐系統</title>
 
 <style>
 body{
-  font-family: Arial;
+  font-family: "Microsoft JhengHei", Arial;
   font-size:18px;
   padding:15px;
   background:#f5f5f5;
@@ -20,6 +21,12 @@ h2{text-align:center;}
   margin:10px 0;
   border-radius:12px;
   border:1px solid #ddd;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.order-item {
+  border-bottom: 1px dashed #ccc;
+  padding: 5px 0;
 }
 
 button{
@@ -31,15 +38,18 @@ button{
   font-size:18px;
   background:#4CAF50;
   color:white;
+  cursor: pointer;
 }
 
-button.red{background:red;}
+button.red{background:#e74c3c;}
+button.gray{background:#95a5a6;}
 
 select{
   width:100%;
-  padding:8px;
+  padding:10px;
   margin:5px 0;
   font-size:16px;
+  border-radius: 5px;
 }
 </style>
 </head>
@@ -48,26 +58,30 @@ select{
 
 <h2>🍦 園遊會點餐系統</h2>
 
-<!-- 角色 -->
+<!-- 角色選擇 -->
 <div id="roleBox" class="box">
   <h3>請選擇身分</h3>
-  <button id="btnFront">我是外場</button>
-  <button id="btnBack">我是內場</button>
+  <button id="btnFront">我是外場 (點餐)</button>
+  <button id="btnBack">我是內場 (出餐)</button>
 </div>
 
-<!-- 外場 -->
+<!-- 外場介面 -->
 <div id="front" class="box" style="display:none;">
-  <h3>外場點餐</h3>
-
+  <div style="display:flex; justify-content: space-between; align-items: center;">
+      <h3>外場點餐</h3>
+      <button class="gray" style="width:80px; font-size:14px;" onclick="resetRole()">登出</button>
+  </div>
   <div id="cart"></div>
-
   <button id="addBtn">➕ 新增餐點</button>
-  <button id="sendBtn">📦 送出訂單</button>
+  <button id="sendBtn" style="background:#2196F3;">📦 送出訂單</button>
 </div>
 
-<!-- 內場 -->
+<!-- 內場介面 -->
 <div id="back" class="box" style="display:none;">
-  <h3>內場訂單</h3>
+  <div style="display:flex; justify-content: space-between; align-items: center;">
+      <h3>內場訂單清單</h3>
+      <button class="gray" style="width:80px; font-size:14px;" onclick="resetRole()">登出</button>
+  </div>
   <div id="orders"></div>
 </div>
 
@@ -76,8 +90,7 @@ select{
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
 <script>
-
-/* 🔥 Firebase */
+/* 🔥 Firebase 設定 (請務必填寫你的資料) */
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_AUTH_DOMAIN",
@@ -88,8 +101,15 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+/* 中文對照表 */
+const typeMap = {
+    ice: "冰淇淋",
+    taiyaki: "鯛魚燒",
+    waffle: "鬆餅"
+};
+
 /* ======================
-   🎭 角色切換（穩定版）
+    🎭 角色切換
 ====================== */
 document.getElementById("btnFront").onclick = () => {
   localStorage.setItem("role","front");
@@ -101,223 +121,148 @@ document.getElementById("btnBack").onclick = () => {
   renderRole();
 };
 
+window.resetRole = () => {
+    localStorage.removeItem("role");
+    renderRole();
+};
+
 function renderRole(){
   const role = localStorage.getItem("role");
-
-  document.getElementById("roleBox").style.display = "none";
-  document.getElementById("front").style.display = "none";
-  document.getElementById("back").style.display = "none";
-
-  if(!role){
-    document.getElementById("roleBox").style.display = "block";
-    return;
-  }
-
-  if(role === "front") document.getElementById("front").style.display = "block";
-  if(role === "back") document.getElementById("back").style.display = "block";
+  document.getElementById("roleBox").style.display = role ? "none" : "block";
+  document.getElementById("front").style.display = role === "front" ? "block" : "none";
+  document.getElementById("back").style.display = role === "back" ? "block" : "none";
 }
 
 /* ======================
-   🍽 點餐資料
+    🍽 外場功能
 ====================== */
-let cart = [];
-
-/* ➕ 新增餐點 */
 document.getElementById("addBtn").onclick = () => {
-
   const id = Date.now();
-
   const box = document.createElement("div");
-  box.className = "box";
+  box.className = "box item-row";
   box.dataset.id = id;
 
   box.innerHTML = `
-    類別：
+    <strong>類別：</strong>
     <select class="type">
-      <option value="">請選</option>
+      <option value="">請選擇餐點...</option>
       <option value="ice">冰淇淋</option>
       <option value="taiyaki">鯛魚燒</option>
       <option value="waffle">鬆餅</option>
     </select>
-
     <div class="sub"></div>
-
-    <button class="remove red">❌ 取消</button>
+    <button class="remove red">❌ 取消此項</button>
   `;
 
   document.getElementById("cart").appendChild(box);
 
-  cart.push({id});
-
-  /* 類別 */
   box.querySelector(".type").onchange = (e)=>{
-    renderItem(id, e.target.value, box);
+    renderItemOptions(e.target.value, box.querySelector(".sub"));
   };
 
-  /* 刪除 */
   box.querySelector(".remove").onclick = ()=>{
     box.remove();
-    cart = cart.filter(c => c.id !== id);
   };
 };
 
-/* 🍽 內容 */
-function renderItem(id, type, box){
-
+function renderItemOptions(type, container){
   let html = "";
-
   if(type === "ice"){
     html = `
-      冰淇淋：
-      <select class="item">
-        <option>原味</option>
-        <option>巧克力</option>
-        <option>草莓</option>
-      </select>
-
-      配料：
-      <select class="top">
-        <option>無</option>
-        <option>巧克力脆片</option>
-        <option>棉花糖</option>
-      </select>
-
-      份數：
-      <select class="qty">
-        <option>1</option>
-        <option>2</option>
-        <option>3</option>
-      </select>
-    `;
-  }
-
-  if(type === "taiyaki"){
+      口味：<select class="item"><option>原味</option><option>巧克力</option><option>草莓</option></select>
+      配料：<select class="top"><option>無</option><option>巧克力脆片</option><option>棉花糖</option></select>
+      份數：<select class="qty"><option>1</option><option>2</option><option>3</option></select>`;
+  } else if(type === "taiyaki"){
     html = `
-      鯛魚燒：
-      <select class="item">
-        <option>巧克力</option>
-        <option>卡士達</option>
-      </select>
-
-      份數：
-      <select class="qty">
-        <option>1</option>
-        <option>2</option>
-      </select>
-    `;
-  }
-
-  if(type === "waffle"){
+      口味：<select class="item"><option>巧克力</option><option>卡士達</option></select>
+      份數：<select class="qty"><option>1</option><option>2</option></select>`;
+  } else if(type === "waffle"){
     html = `
-      鬆餅：
-      <select class="item">
-        <option>巧克力醬</option>
-        <option>不淋</option>
-      </select>
-
-      份數：
-      <select class="qty">
-        <option>1</option>
-        <option>2</option>
-      </select>
-    `;
+      口味：<select class="item"><option>巧克力醬</option><option>不淋</option></select>
+      份數：<select class="qty"><option>1</option><option>2</option></select>`;
   }
-
-  box.querySelector(".sub").innerHTML = html;
+  container.innerHTML = html;
 }
 
-/* ======================
-   📦 送出（穩定版）
-====================== */
 document.getElementById("sendBtn").onclick = () => {
-
-  const now = new Date();
-  const time =
-    now.getFullYear()+"/"+(now.getMonth()+1)+"/"+now.getDate()+" "+
-    now.getHours()+":"+now.getMinutes()+":"+now.getSeconds();
-
-  let order = [];
-
-  document.querySelectorAll("#cart .box").forEach(box=>{
-
+  let orderItems = [];
+  document.querySelectorAll("#cart .item-row").forEach(box => {
     const type = box.querySelector(".type").value;
-    const sub = box.querySelector(".sub");
+    if(!type) return;
 
-    if(!type || !sub.innerHTML) return;
-
-    order.push({
-      type,
+    orderItems.push({
+      typeName: typeMap[type],
       item: box.querySelector(".item")?.value || "",
       top: box.querySelector(".top")?.value || "",
       qty: box.querySelector(".qty")?.value || "1"
     });
   });
 
-  if(order.length === 0){
-    alert("請先點餐");
+  if(orderItems.length === 0){
+    alert("請先增加餐點內容");
     return;
   }
 
+  const now = new Date();
+  const timeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+
   db.ref("orders").push({
-    items: order,
-    time,
-    done:false
+    items: orderItems,
+    time: timeStr,
+    done: false
+  }).then(() => {
+      document.getElementById("cart").innerHTML = "";
+      alert("訂單已送往內場！");
   });
-
-  document.getElementById("cart").innerHTML = "";
-  cart = [];
-
-  alert("已送出！");
 };
 
 /* ======================
-   📡 內場
+    📡 內場監聽
 ====================== */
 db.ref("orders").on("value", snap=>{
-
   const data = snap.val() || {};
   let html = "";
+  
+  // 將資料轉為陣列以便處理排序（未完成的在前）
+  const sortedKeys = Object.keys(data).reverse(); 
 
-  for(let id in data){
-
+  sortedKeys.forEach(id => {
     const o = data[id];
-
-    let list = "";
-    o.items.forEach(i=>{
-      list += `${i.type} ${i.item} x${i.qty}<br>`;
+    let listHtml = "";
+    o.items.forEach(i => {
+      listHtml += `<div class="order-item">🔹 ${i.typeName}-${i.item} ${i.top!=='無'&&i.top!==''?'('+i.top+')':''} <b>x${i.qty}</b></div>`;
     });
 
     html += `
-      <div class="box">
-        ⏰ ${o.time}<br>
-        ${list}
-
-        <button onclick="done('${id}')">
-          ${o.done ? "✔完成" : "完成"}
-        </button>
-
-        <button class="red" onclick="del('${id}')">
-          刪除
-        </button>
+      <div class="box" style="${o.done ? 'opacity:0.6; border-left:10px solid #ccc;' : 'border-left:10px solid #4CAF50;'}">
+        <div style="color:#666; font-size:14px;">時間：${o.time}</div>
+        ${listHtml}
+        <div style="display:flex; gap:10px;">
+            <button onclick="markDone('${id}', ${o.done})">
+              ${o.done ? "✔ 已完成 (點擊取消)" : "✅ 完成餐點"}
+            </button>
+            <button class="red" style="width:100px;" onclick="deleteOrder('${id}')">刪除</button>
+        </div>
       </div>
     `;
-  }
-
-  document.getElementById("orders").innerHTML = html;
+  });
+  document.getElementById("orders").innerHTML = html || "<p style='text-align:center;'>目前沒有訂單</p>";
 });
 
-function done(id){
-  db.ref("orders/"+id).update({done:true});
-}
+// 修正：將函式掛載到 window 確保 HTML onclick 能觸發
+window.markDone = (id, currentStatus) => {
+  db.ref("orders/"+id).update({done: !currentStatus});
+};
 
-function del(id){
-  db.ref("orders/"+id).remove();
-}
+window.deleteOrder = (id) => {
+  if(confirm("確定要刪除這筆訂單嗎？")) {
+    db.ref("orders/"+id).remove();
+  }
+};
 
 /* 初始化 */
 renderRole();
 
 </script>
-
 </body>
 </html>
