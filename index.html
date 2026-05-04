@@ -3,19 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <title>園遊會點餐系統</title>
+
 <style>
 body { font-family: Arial; padding: 20px; }
 .box { border: 1px solid #ccc; padding: 15px; margin: 10px 0; }
 button { margin: 5px; padding: 8px; }
 </style>
+
 </head>
 
 <body>
 
 <h2>園遊會點餐系統</h2>
 
-<!-- 選角色 -->
-<div id="choose">
+<!-- 選身分 -->
+<div id="choose" class="box">
   <h3>請選擇身分</h3>
   <button onclick="setRole('front')">我是外場</button>
   <button onclick="setRole('back')">我是內場</button>
@@ -75,12 +77,14 @@ button { margin: 5px; padding: 8px; }
 
 <script>
 
-// 🔥 貼你的 Firebase config
+// ======================
+// 🔥 Firebase（換成你的）
+// ======================
 const firebaseConfig = {
-  apiKey: "AIzaSyDU5jL0jVeOQI2ixqaYeOO7vEstHiXhv_I",
-    authDomain: "canteen-system-41c48.firebaseapp.com",
-    databaseURL: "https://canteen-system-41c48-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "canteen-system-41c48"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  databaseURL: "YOUR_DATABASE_URL",
+  projectId: "YOUR_PROJECT_ID"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -88,7 +92,7 @@ const db = firebase.database();
 
 
 // ======================
-// 🎭 角色
+// 🎭 角色系統
 // ======================
 function setRole(role){
   localStorage.setItem("role", role);
@@ -102,26 +106,38 @@ function show(){
   document.getElementById("front").style.display = "none";
   document.getElementById("back").style.display = "none";
 
-  if(role === "front") document.getElementById("front").style.display = "block";
-  if(role === "back") document.getElementById("back").style.display = "block";
+  if(!role){
+    document.getElementById("choose").style.display = "block";
+    return;
+  }
+
+  if(role === "front"){
+    document.getElementById("front").style.display = "block";
+  }
+
+  if(role === "back"){
+    document.getElementById("back").style.display = "block";
+  }
 }
 
 
 // ======================
-// 🧾 送出訂單（含編號+時間）
+// 🧾 送出訂單（編號+時間）
 // ======================
 function sendOrder(){
 
   const now = new Date();
+
   const time =
     now.getFullYear()+"/"+(now.getMonth()+1)+"/"+now.getDate()+" "+
     now.getHours()+":"+now.getMinutes()+":"+now.getSeconds();
 
   db.ref("orders").once("value", snap => {
-    const no = snap.numChildren() + 1;
+
+    const count = snap.numChildren() + 1;
 
     db.ref("orders").push({
-      orderNo: no,
+      orderNo: count,
       ice: ice.value,
       topping: topping.value,
       taiyaki: taiyaki.value,
@@ -130,16 +146,17 @@ function sendOrder(){
       done: false
     });
 
-    alert("已送出訂單 #" + no);
+    alert("已送出訂單 #" + count);
   });
 }
 
 
 // ======================
-// 📡 即時訂單
+// 📡 即時訂單（防炸版）
 // ======================
 db.ref("orders").on("value", snap => {
-  const data = snap.val();
+
+  const data = snap.val() || {};
   let html = "";
 
   for(let id in data){
@@ -166,7 +183,7 @@ db.ref("orders").on("value", snap => {
     `;
   }
 
-  orders.innerHTML = html;
+  document.getElementById("orders").innerHTML = html;
 });
 
 
@@ -182,34 +199,16 @@ function done(id){
 // 🗑 刪除
 // ======================
 function del(id){
-  if(confirm("刪除？")){
+  if(confirm("確定刪除？")){
     db.ref("orders/"+id).remove();
   }
 }
 
-function show(){
-  const role = localStorage.getItem("role");
 
-  // 👉 先全部隱藏
-  document.getElementById("choose").style.display = "none";
-  document.getElementById("front").style.display = "none";
-  document.getElementById("back").style.display = "none";
-
-  // 👉 沒選角色 → 顯示選單
-  if(!role){
-    document.getElementById("choose").style.display = "block";
-    return;
-  }
-
-  // 👉 已選角色
-  if(role === "front"){
-    document.getElementById("front").style.display = "block";
-  }
-
-  if(role === "back"){
-    document.getElementById("back").style.display = "block";
-  }
-}
+// ======================
+// 🚀 初始化
+// ======================
+show();
 
 </script>
 
