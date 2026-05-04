@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>園遊會點餐系統</title>
+<style>
+body { font-family: Arial; padding: 20px; }
+.box { border: 1px solid #ccc; padding: 15px; margin: 10px 0; }
+button { margin: 5px; padding: 8px; }
+</style>
+</head>
+
+<body>
+
+<h2>園遊會點餐系統</h2>
+
+<!-- 選角色 -->
+<div id="choose">
+  <h3>請選擇身分</h3>
+  <button onclick="setRole('front')">我是外場</button>
+  <button onclick="setRole('back')">我是內場</button>
+</div>
+
+<!-- 外場 -->
+<div id="front" style="display:none;" class="box">
+<h3>外場點餐</h3>
+
+冰淇淋：
+<select id="ice">
+  <option>原味</option>
+  <option>巧克力</option>
+  <option>草莓</option>
+</select>
+
+<br><br>
+
+配料：
+<select id="topping">
+  <option>無</option>
+  <option>巧克力脆片</option>
+  <option>巧克力脆笛酥</option>
+  <option>棉花糖</option>
+</select>
+
+<br><br>
+
+鯛魚燒：
+<select id="taiyaki">
+  <option>巧克力</option>
+  <option>卡士達</option>
+</select>
+
+<br><br>
+
+鬆餅：
+<select id="waffle">
+  <option>淋巧克力醬</option>
+  <option>不淋巧克力醬</option>
+</select>
+
+<br><br>
+
+<button onclick="sendOrder()">送出訂單</button>
+</div>
+
+<!-- 內場 -->
+<div id="back" style="display:none;" class="box">
+<h3>內場訂單</h3>
+<div id="orders"></div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+<script>
+
+// 🔥 貼你的 Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyDU5jL0jVeOQI2ixqaYeOO7vEstHiXhv_I",
+    authDomain: "canteen-system-41c48.firebaseapp.com",
+    databaseURL: "https://canteen-system-41c48-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "canteen-system-41c48"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+
+// ======================
+// 🎭 角色
+// ======================
+function setRole(role){
+  localStorage.setItem("role", role);
+  show();
+}
+
+function show(){
+  const role = localStorage.getItem("role");
+
+  document.getElementById("choose").style.display = "none";
+  document.getElementById("front").style.display = "none";
+  document.getElementById("back").style.display = "none";
+
+  if(role === "front") document.getElementById("front").style.display = "block";
+  if(role === "back") document.getElementById("back").style.display = "block";
+}
+
+
+// ======================
+// 🧾 送出訂單（含編號+時間）
+// ======================
+function sendOrder(){
+
+  const now = new Date();
+  const time =
+    now.getFullYear()+"/"+(now.getMonth()+1)+"/"+now.getDate()+" "+
+    now.getHours()+":"+now.getMinutes()+":"+now.getSeconds();
+
+  db.ref("orders").once("value", snap => {
+    const no = snap.numChildren() + 1;
+
+    db.ref("orders").push({
+      orderNo: no,
+      ice: ice.value,
+      topping: topping.value,
+      taiyaki: taiyaki.value,
+      waffle: waffle.value,
+      time: time,
+      done: false
+    });
+
+    alert("已送出訂單 #" + no);
+  });
+}
+
+
+// ======================
+// 📡 即時訂單
+// ======================
+db.ref("orders").on("value", snap => {
+  const data = snap.val();
+  let html = "";
+
+  for(let id in data){
+    const o = data[id];
+
+    html += `
+      <div>
+        <b>📦 #${o.orderNo}</b><br>
+        ⏰ ${o.time}<br>
+        🍦 ${o.ice} + ${o.topping}<br>
+        🐟 ${o.taiyaki}<br>
+        🧇 ${o.waffle}<br>
+
+        <button onclick="done('${id}')">
+          ${o.done ? "✔完成" : "完成"}
+        </button>
+
+        <button onclick="del('${id}')" style="color:red;">
+          刪除
+        </button>
+
+        <hr>
+      </div>
+    `;
+  }
+
+  orders.innerHTML = html;
+});
+
+
+// ======================
+// ✔ 完成
+// ======================
+function done(id){
+  db.ref("orders/"+id).update({done:true});
+}
+
+
+// ======================
+// 🗑 刪除
+// ======================
+function del(id){
+  if(confirm("刪除？")){
+    db.ref("orders/"+id).remove();
+  }
+}
+
+show();
+
+</script>
+
+</body>
+</html>
