@@ -33,16 +33,11 @@ button{
   color:white;
 }
 
-button:active{transform:scale(0.98);}
-
-select{
-  width:100%;
-  padding:8px;
-  margin:5px 0;
-  font-size:16px;
+button.red{
+  background:red;
 }
 
-input{
+select{
   width:100%;
   padding:8px;
   margin:5px 0;
@@ -57,18 +52,9 @@ input{
 <h2>🍦 園遊會點餐系統</h2>
 
 <!-- ====================== -->
-<!-- 🎭 選身分 -->
+<!-- 外場 -->
 <!-- ====================== -->
-<div id="choose" class="box">
-  <h3>請選擇身分</h3>
-  <button onclick="setRole('front')">我是外場</button>
-  <button onclick="setRole('back')">我是內場</button>
-</div>
-
-<!-- ====================== -->
-<!-- 🍦 外場 -->
-<!-- ====================== -->
-<div id="front" style="display:none;" class="box">
+<div id="front" class="box">
 
 <h3>外場點餐</h3>
 
@@ -80,23 +66,22 @@ input{
 </div>
 
 <!-- ====================== -->
-<!-- 📋 內場 -->
+<!-- 內場 -->
 <!-- ====================== -->
-<div id="back" style="display:none;" class="box">
-
+<div id="back" class="box" style="display:none;">
 <h3>內場訂單</h3>
 <div id="orders"></div>
-
 </div>
 
 <!-- ====================== -->
-<!-- 🔥 Firebase -->
+<!-- Firebase -->
 <!-- ====================== -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
 <script>
 
+// 🔥 Firebase
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_AUTH_DOMAIN",
@@ -111,43 +96,15 @@ let items = [];
 
 
 // ======================
-// 🎭 角色系統
-// ======================
-function setRole(role){
-  localStorage.setItem("role", role);
-  show();
-}
-
-function show(){
-  const role = localStorage.getItem("role");
-
-  document.getElementById("choose").style.display = "none";
-  document.getElementById("front").style.display = "none";
-  document.getElementById("back").style.display = "none";
-
-  if(!role){
-    document.getElementById("choose").style.display = "block";
-    return;
-  }
-
-  if(role === "front"){
-    document.getElementById("front").style.display = "block";
-  }
-
-  if(role === "back"){
-    document.getElementById("back").style.display = "block";
-  }
-}
-
-
-// ======================
 // ➕ 新增餐點
 // ======================
 function addItem(){
 
   const id = Date.now();
 
-  const html = `
+  items.push({id});
+
+  document.getElementById("cart").innerHTML += `
   <div class="box" id="item-${id}">
 
     類別：
@@ -160,17 +117,26 @@ function addItem(){
 
     <div id="sub-${id}"></div>
 
+    <button class="red" onclick="removeItem(${id})">
+      ❌ 取消餐點
+    </button>
+
   </div>
   `;
-
-  document.getElementById("cart").innerHTML += html;
-
-  items.push(id);
 }
 
 
 // ======================
-// 🍽 類別切換（冰淇淋才有配料）
+// ❌ 刪除餐點
+// ======================
+function removeItem(id){
+  document.getElementById("item-"+id).remove();
+  items = items.filter(i => i.id !== id);
+}
+
+
+// ======================
+// 🍽 類別切換
 // ======================
 function updateType(id, type){
 
@@ -238,65 +204,76 @@ function updateType(id, type){
 
 
 // ======================
-// 📦 送出訂單
+// 📦 送出訂單（穩定版）
 // ======================
 function sendOrder(){
 
-  const now = new Date();
+  try{
 
-  const time =
-    now.getFullYear()+"/"+(now.getMonth()+1)+"/"+now.getDate()+" "+
-    now.getHours()+":"+now.getMinutes()+":"+now.getSeconds();
+    const now = new Date();
 
-  let order = [];
+    const time =
+      now.getFullYear()+"/"+(now.getMonth()+1)+"/"+now.getDate()+" "+
+      now.getHours()+":"+now.getMinutes()+":"+now.getSeconds();
 
-  items.forEach(id => {
+    let order = [];
 
-    const sub = document.getElementById("sub-"+id);
-    if(!sub) return;
+    for(let i of items){
 
-    if(sub.innerHTML.includes("冰淇淋")){
-      order.push({
-        type:"冰淇淋",
-        item: document.getElementById("ice-"+id).value,
-        topping: document.getElementById("top-"+id).value,
-        qty: document.getElementById("qty-"+id).value
-      });
+      const sub = document.getElementById("sub-"+i.id);
+      if(!sub || sub.innerHTML === "") continue;
+
+      if(sub.innerHTML.includes("冰淇淋")){
+        order.push({
+          type:"冰淇淋",
+          item: document.getElementById("ice-"+i.id).value,
+          topping: document.getElementById("top-"+i.id).value,
+          qty: document.getElementById("qty-"+i.id).value
+        });
+      }
+
+      if(sub.innerHTML.includes("鯛魚燒")){
+        order.push({
+          type:"鯛魚燒",
+          item: document.getElementById("food-"+i.id).value,
+          qty: document.getElementById("qty-"+i.id).value
+        });
+      }
+
+      if(sub.innerHTML.includes("鬆餅")){
+        order.push({
+          type:"鬆餅",
+          item: document.getElementById("food-"+i.id).value,
+          qty: document.getElementById("qty-"+i.id).value
+        });
+      }
     }
 
-    if(sub.innerHTML.includes("鯛魚燒")){
-      order.push({
-        type:"鯛魚燒",
-        item: document.getElementById("food-"+id).value,
-        qty: document.getElementById("qty-"+id).value
-      });
+    if(order.length === 0){
+      alert("請先新增餐點！");
+      return;
     }
 
-    if(sub.innerHTML.includes("鬆餅")){
-      order.push({
-        type:"鬆餅",
-        item: document.getElementById("food-"+id).value,
-        qty: document.getElementById("qty-"+id).value
-      });
-    }
+    db.ref("orders").push({
+      items: order,
+      time: time,
+      done: false
+    });
 
-  });
+    alert("送出成功！");
 
-  db.ref("orders").push({
-    items: order,
-    time: time,
-    done: false
-  });
+    document.getElementById("cart").innerHTML = "";
+    items = [];
 
-  alert("已送出訂單！");
-
-  document.getElementById("cart").innerHTML = "";
-  items = [];
+  }catch(err){
+    alert("錯誤：" + err.message);
+    console.log(err);
+  }
 }
 
 
 // ======================
-// 📡 內場
+// 📡 內場即時
 // ======================
 db.ref("orders").on("value", snap => {
 
@@ -321,7 +298,7 @@ db.ref("orders").on("value", snap => {
           ${o.done ? "✔完成" : "完成"}
         </button>
 
-        <button onclick="del('${id}')" style="background:red;">
+        <button class="red" onclick="del('${id}')">
           刪除
         </button>
       </div>
@@ -343,10 +320,6 @@ function del(id){
     db.ref("orders/"+id).remove();
   }
 }
-
-
-// 🚀 初始化
-show();
 
 </script>
 
