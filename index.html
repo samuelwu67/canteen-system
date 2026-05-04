@@ -33,9 +33,7 @@ button{
   color:white;
 }
 
-button.red{
-  background:red;
-}
+button.red{background:red;}
 
 select{
   width:100%;
@@ -43,7 +41,6 @@ select{
   margin:5px 0;
   font-size:16px;
 }
-
 </style>
 
 </head>
@@ -53,47 +50,42 @@ select{
 <h2>🍦 園遊會點餐系統</h2>
 
 <!-- ====================== -->
-<!-- 🎭 選身分（一定要有） -->
+<!-- 🎭 選身分 -->
 <!-- ====================== -->
 <div id="choose" class="box">
   <h3>請選擇身分</h3>
-  <button onclick="setRole('front')">我是外場</button>
-  <button onclick="setRole('back')">我是內場</button>
+  <button id="btnFront">我是外場</button>
+  <button id="btnBack">我是內場</button>
 </div>
 
 <!-- ====================== -->
-<!-- 🍦 外場 -->
+<!-- 外場 -->
 <!-- ====================== -->
-<div id="front" style="display:none;" class="box">
-
+<div id="front" class="box" style="display:none;">
 <h3>外場點餐</h3>
 
 <div id="cart"></div>
 
-<button onclick="addItem()">➕ 新增餐點</button>
-<button onclick="sendOrder()">📦 送出訂單</button>
+<button id="addBtn">➕ 新增餐點</button>
+<button id="sendBtn">📦 送出訂單</button>
 
 </div>
 
 <!-- ====================== -->
-<!-- 📋 內場 -->
+<!-- 內場 -->
 <!-- ====================== -->
-<div id="back" style="display:none;" class="box">
-
+<div id="back" class="box" style="display:none;">
 <h3>內場訂單</h3>
 <div id="orders"></div>
-
 </div>
 
-<!-- ====================== -->
-<!-- 🔥 Firebase -->
-<!-- ====================== -->
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
 <script>
 
-// 🔥 Firebase（記得換）
+// 🔥 Firebase（換你的）
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_AUTH_DOMAIN",
@@ -108,103 +100,112 @@ let items = [];
 
 
 // ======================
-// 🎭 角色系統（修好版）
+// 🎭 角色（用 addEventListener）
 // ======================
-function setRole(role){
-  localStorage.setItem("role", role);
+document.getElementById("btnFront").addEventListener("click", ()=>{
+  localStorage.setItem("role","front");
   show();
-}
+});
 
+document.getElementById("btnBack").addEventListener("click", ()=>{
+  localStorage.setItem("role","back");
+  show();
+});
+
+
+// ======================
+// 🚀 顯示控制
+// ======================
 function show(){
 
   const role = localStorage.getItem("role");
 
-  const choose = document.getElementById("choose");
-  const front = document.getElementById("front");
-  const back = document.getElementById("back");
-
-  choose.style.display = "none";
-  front.style.display = "none";
-  back.style.display = "none";
+  document.getElementById("choose").style.display = "none";
+  document.getElementById("front").style.display = "none";
+  document.getElementById("back").style.display = "none";
 
   if(!role){
-    choose.style.display = "block";
+    document.getElementById("choose").style.display = "block";
     return;
   }
 
-  if(role === "front") front.style.display = "block";
-  if(role === "back") back.style.display = "block";
+  if(role === "front") document.getElementById("front").style.display = "block";
+  if(role === "back") document.getElementById("back").style.display = "block";
 }
 
 
 // ======================
-// ➕ 新增餐點
+// ➕ 新增餐點（事件綁定）
 // ======================
+document.getElementById("addBtn").addEventListener("click", addItem);
+
 function addItem(){
 
   const id = Date.now();
 
   items.push({id});
 
-  document.getElementById("cart").innerHTML += `
-  <div class="box" id="item-${id}">
+  const div = document.createElement("div");
+  div.className = "box";
+  div.id = "item-"+id;
 
+  div.innerHTML = `
     類別：
-    <select onchange="updateType(${id}, this.value)">
+    <select class="type">
       <option value="">請選</option>
       <option value="ice">冰淇淋</option>
       <option value="taiyaki">鯛魚燒</option>
       <option value="waffle">鬆餅</option>
     </select>
 
-    <div id="sub-${id}"></div>
+    <div class="sub"></div>
 
-    <button class="red" onclick="removeItem(${id})">
-      ❌ 取消餐點
-    </button>
-
-  </div>
+    <button class="remove red">❌ 取消餐點</button>
   `;
+
+  document.getElementById("cart").appendChild(div);
+
+  // 類別變動
+  div.querySelector(".type").addEventListener("change", function(){
+    updateType(id, this.value, div);
+  });
+
+  // 刪除
+  div.querySelector(".remove").addEventListener("click", function(){
+    div.remove();
+    items = items.filter(i => i.id !== id);
+  });
 }
 
 
 // ======================
-// ❌ 刪除單筆餐點
+// 🍽 類別內容
 // ======================
-function removeItem(id){
-  document.getElementById("item-"+id).remove();
-  items = items.filter(i => i.id !== id);
-}
-
-
-// ======================
-// 🍽 類別切換（冰淇淋連動配料）
-// ======================
-function updateType(id, type){
+function updateType(id, type, div){
 
   let html = "";
 
   if(type === "ice"){
     html = `
       冰淇淋：
-      <select id="ice-${id}">
+      <select class="ice">
         <option>原味</option>
         <option>巧克力</option>
         <option>草莓</option>
       </select>
 
       配料：
-      <select id="top-${id}">
+      <select class="top">
         <option>無</option>
         <option>巧克力脆片</option>
         <option>棉花糖</option>
       </select>
 
       份數：
-      <select id="qty-${id}">
-        <option value="1">1</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
+      <select class="qty">
+        <option>1</option>
+        <option>2</option>
+        <option>3</option>
       </select>
     `;
   }
@@ -212,15 +213,15 @@ function updateType(id, type){
   if(type === "taiyaki"){
     html = `
       鯛魚燒：
-      <select id="food-${id}">
+      <select class="food">
         <option>巧克力</option>
         <option>卡士達</option>
       </select>
 
       份數：
-      <select id="qty-${id}">
-        <option value="1">1</option>
-        <option value="2">2</option>
+      <select class="qty">
+        <option>1</option>
+        <option>2</option>
       </select>
     `;
   }
@@ -228,95 +229,93 @@ function updateType(id, type){
   if(type === "waffle"){
     html = `
       鬆餅：
-      <select id="food-${id}">
+      <select class="food">
         <option>淋巧克力醬</option>
-        <option>不淋巧克力醬</option>
+        <option>不淋</option>
       </select>
 
       份數：
-      <select id="qty-${id}">
-        <option value="1">1</option>
-        <option value="2">2</option>
+      <select class="qty">
+        <option>1</option>
+        <option>2</option>
       </select>
     `;
   }
 
-  document.getElementById("sub-"+id).innerHTML = html;
+  div.querySelector(".sub").innerHTML = html;
 }
 
 
 // ======================
 // 📦 送出訂單（穩定版）
 // ======================
+document.getElementById("sendBtn").addEventListener("click", sendOrder);
+
 function sendOrder(){
 
-  try{
+  const now = new Date();
 
-    const now = new Date();
+  const time =
+    now.getFullYear()+"/"+(now.getMonth()+1)+"/"+now.getDate()+" "+
+    now.getHours()+":"+now.getMinutes()+":"+now.getSeconds();
 
-    const time =
-      now.getFullYear()+"/"+(now.getMonth()+1)+"/"+now.getDate()+" "+
-      now.getHours()+":"+now.getMinutes()+":"+now.getSeconds();
+  let order = [];
 
-    let order = [];
+  document.querySelectorAll("#cart .box").forEach(box=>{
 
-    for(let i of items){
+    const type = box.querySelector(".type").value;
+    const sub = box.querySelector(".sub");
 
-      const sub = document.getElementById("sub-"+i.id);
-      if(!sub || sub.innerHTML === "") continue;
+    if(!type || !sub.innerHTML) return;
 
-      if(sub.innerHTML.includes("冰淇淋")){
-        order.push({
-          type:"冰淇淋",
-          item: document.getElementById("ice-"+i.id).value,
-          topping: document.getElementById("top-"+i.id).value,
-          qty: document.getElementById("qty-"+i.id).value
-        });
-      }
-
-      if(sub.innerHTML.includes("鯛魚燒")){
-        order.push({
-          type:"鯛魚燒",
-          item: document.getElementById("food-"+i.id).value,
-          qty: document.getElementById("qty-"+i.id).value
-        });
-      }
-
-      if(sub.innerHTML.includes("鬆餅")){
-        order.push({
-          type:"鬆餅",
-          item: document.getElementById("food-"+i.id).value,
-          qty: document.getElementById("qty-"+i.id).value
-        });
-      }
+    if(type === "ice"){
+      order.push({
+        type:"冰淇淋",
+        item: box.querySelector(".ice").value,
+        topping: box.querySelector(".top").value,
+        qty: box.querySelector(".qty").value
+      });
     }
 
-    if(order.length === 0){
-      alert("請先新增餐點！");
-      return;
+    if(type === "taiyaki"){
+      order.push({
+        type:"鯛魚燒",
+        item: box.querySelector(".food").value,
+        qty: box.querySelector(".qty").value
+      });
     }
 
-    db.ref("orders").push({
-      items: order,
-      time: time,
-      done: false
-    });
+    if(type === "waffle"){
+      order.push({
+        type:"鬆餅",
+        item: box.querySelector(".food").value,
+        qty: box.querySelector(".qty").value
+      });
+    }
+  });
 
-    alert("送出成功！");
-
-    document.getElementById("cart").innerHTML = "";
-    items = [];
-
-  }catch(err){
-    alert("錯誤：" + err.message);
+  if(order.length === 0){
+    alert("請先點餐！");
+    return;
   }
+
+  db.ref("orders").push({
+    items: order,
+    time: time,
+    done: false
+  });
+
+  alert("送出成功！");
+
+  document.getElementById("cart").innerHTML = "";
+  items = [];
 }
 
 
 // ======================
-// 📡 內場即時
+// 📡 內場
 // ======================
-db.ref("orders").on("value", snap => {
+db.ref("orders").on("value", snap=>{
 
   const data = snap.val() || {};
   let html = "";
@@ -349,21 +348,16 @@ db.ref("orders").on("value", snap => {
   document.getElementById("orders").innerHTML = html;
 });
 
-
-// ✔ 完成
 function done(id){
   db.ref("orders/"+id).update({done:true});
 }
 
-// 🗑 刪除
 function del(id){
-  if(confirm("確定刪除？")){
+  if(confirm("刪除？")){
     db.ref("orders/"+id).remove();
   }
 }
 
-
-// 🚀 初始化
 show();
 
 </script>
