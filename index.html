@@ -27,9 +27,6 @@
   
   .dish-block { border: 2px solid #eee; padding: 15px; margin-bottom: 10px; border-radius: 8px; position: relative; background: #fafafa; }
   .del-dish { position: absolute; top: 5px; right: 5px; background: #ff5252; width: 30px; height: 30px; padding: 0; line-height: 30px; border-radius: 50%; color: white; border: none; font-weight: bold; }
-
-  /* 聲音狀態條 */
-  .sound-status { background: #fff3cd; color: #856404; padding: 10px; border-radius: 8px; margin-bottom: 10px; font-size: 14px; text-align: center; border: 1px solid #ffeeba; }
 </style>
 </head>
 
@@ -37,15 +34,11 @@
 
 <h2>🍦 園遊會點餐系統</h2>
 
-<!-- 🔊 這裡更換音效 -->
-<audio id="noticeSound" src="vkbzm-zmatn.mp3" preload="auto"></audio>
-
 <!-- 🎭 角色切換 -->
 <div id="roleBox" class="box">
   <h3>請選擇身分</h3>
   <button onclick="setRole('front')">我是外場 (點餐)</button>
-  <!-- 點擊此按鈕會解鎖瀏覽器聲音 -->
-  <button onclick="enableSoundAndSetRole('back')" class="blue">我是內場 (出餐)</button>
+  <button onclick="setRole('back')" class="blue">我是內場 (出餐)</button>
 </div>
 
 <!-- 🛒 外場介面 -->
@@ -55,7 +48,9 @@
     <button class="gray" onclick="setRole('')">切換身分</button>
   </div>
   <p style="color:#666; font-size: 14px;">📝 先新增餐點，再選擇種類。系統會自動編號。</p>
+
   <div id="dishContainer"></div>
+
   <button class="add-btn" onclick="addDish()">➕ 新增一項餐點</button>
   <button onclick="sendOrder()" class="blue" id="btnSend">📦 送出完整訂單</button>
 </div>
@@ -66,7 +61,6 @@
     <h3>📋 內場訂單清單</h3>
     <button class="gray" onclick="setRole('')">切換身分</button>
   </div>
-  <div id="soundAlert" class="sound-status">🔔 鈴聲偵測中... (新訂單來時會響)</div>
   <div id="orders">正在同步訂單...</div>
 </div>
 
@@ -87,27 +81,9 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-let lastOrderCount = -1;
-let soundEnabled = false;
-
-// 啟動聲音並切換角色
-function enableSoundAndSetRole(role) {
-  const audio = document.getElementById('noticeSound');
-  audio.play().then(() => {
-    audio.pause();
-    audio.currentTime = 0;
-    soundEnabled = true;
-  }).catch(e => console.log("等待手動解鎖聲音"));
-  setRole(role);
-}
-
 function setRole(r){
-  if(!r) {
-    localStorage.removeItem("role");
-    soundEnabled = false;
-  } else {
-    localStorage.setItem("role", r);
-  }
+  if(!r) localStorage.removeItem("role");
+  else localStorage.setItem("role", r);
   if(r === 'front') { 
     document.getElementById('dishContainer').innerHTML = '';
     addDish(); 
@@ -202,29 +178,17 @@ function sendOrder(){
 
 db.ref("orders").on("value", snap => {
   const data = snap.val() || {};
-  const currentCount = Object.keys(data).length;
-  const role = localStorage.getItem("role");
-
-  // 播放音效邏輯
-  if (role === 'back' && lastOrderCount !== -1 && currentCount > lastOrderCount) {
-    const audio = document.getElementById('noticeSound');
-    audio.currentTime = 0;
-    audio.play().catch(e => {
-        document.getElementById('soundAlert').innerHTML = "⚠️ 鈴聲被攔截！請點擊畫面任何地方解鎖";
-        document.getElementById('soundAlert').style.background = "#f8d7da";
-    });
-  }
-  lastOrderCount = currentCount;
-
   let html = "";
   const now = Date.now();
   
-  // 🚀 關鍵排序：最新(大timestamp)在上面，最舊(小timestamp)在下面
+  // 🚀 核心邏輯：排序訂單
   const sortedKeys = Object.keys(data).sort((a,b) => {
-    if(data[a].done === data[b].done) {
-        return data[b].timestamp - data[a].timestamp; // 修改處：b - a 代表最新在頂部
+    // 如果完成狀態不同，未完成的(false)排在前面
+    if(data[a].done !== data[b].done) {
+        return data[a].done ? 1 : -1;
     }
-    return data[a].done ? 1 : -1; // 已完成的排在最後面
+    // 如果完成狀態相同，時間戳記較大(新)的排在前面
+    return data[b].timestamp - data[a].timestamp;
   });
 
   sortedKeys.forEach(id => {
@@ -261,14 +225,6 @@ db.ref("orders").on("value", snap => {
 
 function toggleDone(id, cur){ db.ref("orders/"+id).update({ done: !cur }); }
 function del(id){ if(confirm("確定徹底刪除嗎？")) db.ref("orders/"+id).remove(); }
-
-// 備用解鎖聲音
-document.body.onclick = function() {
-    if(!soundEnabled) {
-        const audio = document.getElementById('noticeSound');
-        audio.play().then(()=> { audio.pause(); soundEnabled = true; });
-    }
-}
 
 showUI();
 </script>
