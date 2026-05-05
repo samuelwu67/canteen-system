@@ -34,6 +34,9 @@
 
 <h2>🍦 園遊會點餐系統</h2>
 
+<!-- 🔊 音效組件 (隱藏) -->
+<audio id="noticeSound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+
 <!-- 🎭 角色切換 -->
 <div id="roleBox" class="box">
   <h3>請選擇身分</h3>
@@ -80,6 +83,9 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+
+// 記錄當前訂單數量，用來判斷是否有新訂單
+let lastOrderCount = -1;
 
 function setRole(r){
   if(!r) localStorage.removeItem("role");
@@ -180,6 +186,15 @@ db.ref("orders").on("value", snap => {
   const data = snap.val() || {};
   let html = "";
   const now = Date.now();
+  const currentCount = Object.keys(data).length;
+
+  // 🔊 音效判斷邏輯
+  const r = localStorage.getItem("role");
+  if (r === 'back' && lastOrderCount !== -1 && currentCount > lastOrderCount) {
+    document.getElementById('noticeSound').play().catch(e => console.log("音效播放受阻 (需點擊網頁任意處啟動)"));
+  }
+  lastOrderCount = currentCount;
+
   const sortedKeys = Object.keys(data).sort((a,b) => {
     if(data[a].done === data[b].done) return data[a].timestamp - data[b].timestamp;
     return data[a].done ? 1 : -1;
@@ -191,14 +206,12 @@ db.ref("orders").on("value", snap => {
     const statusClass = o.done ? "order-done" : (waitMin >= 10 ? "order-urgent" : "order-wait");
 
     let itemsHtml = "";
-    // 💡 防錯處理：如果沒有 items 陣列，可能是舊資料
     if (o.items && Array.isArray(o.items)) {
       o.items.forEach(it => {
         let extraText = it.extra && it.extra !== "無" ? ` + ${it.extra}` : "";
         itemsHtml += `<div class="item-row">${it.type} (${it.flavor})${extraText} x <b>${it.qty}</b></div>`;
       });
     } else {
-      // 處理舊格式數據，避免出現 undefined
       itemsHtml = `<div class="item-row" style="color:red">⚠️ 舊格式訂單，請刪除或忽略</div>`;
     }
 
