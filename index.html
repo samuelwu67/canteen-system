@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>園遊會點餐系統 - 音效強化版</title>
+<title>園遊會點餐系統 - 穩定修正版</title>
 
 <style>
   body { font-family: Arial, "Microsoft JhengHei"; background: #f0f2f5; padding: 15px; margin: 0; font-size: 18px; }
@@ -27,9 +27,6 @@
   
   .dish-block { border: 2px solid #eee; padding: 15px; margin-bottom: 10px; border-radius: 8px; position: relative; background: #fafafa; }
   .del-dish { position: absolute; top: 5px; right: 5px; background: #ff5252; width: 30px; height: 30px; padding: 0; line-height: 30px; border-radius: 50%; color: white; border: none; font-weight: bold; }
-
-  .sound-selector { background: #fff3cd; padding: 10px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #ffeeba; }
-  .sound-selector label { font-size: 14px; font-weight: bold; color: #856404; }
 </style>
 </head>
 
@@ -37,40 +34,33 @@
 
 <h2>🍦 園遊會點餐系統</h2>
 
-<!-- 🔊 音效播放元件 -->
-<audio id="audioPlayer" preload="auto"></audio>
-
+<!-- 🎭 角色切換 -->
 <div id="roleBox" class="box">
   <h3>請選擇身分</h3>
   <button onclick="setRole('front')">我是外場 (點餐)</button>
-  <button onclick="unlockBackOffice()" class="blue">我是內場 (出餐)</button>
+  <button onclick="setRole('back')" class="blue">我是內場 (出餐)</button>
 </div>
 
+<!-- 🛒 外場介面 -->
 <div id="front" style="display:none;" class="box">
   <div style="display:flex; justify-content: space-between; align-items: center;">
     <h3>🛒 外場點餐</h3>
     <button class="gray" onclick="setRole('')">切換身分</button>
   </div>
+  <p style="color:#666; font-size: 14px;">📝 先新增餐點，再選擇種類。系統會自動編號。</p>
+
   <div id="dishContainer"></div>
+
   <button class="add-btn" onclick="addDish()">➕ 新增一項餐點</button>
   <button onclick="sendOrder()" class="blue" id="btnSend">📦 送出完整訂單</button>
 </div>
 
+<!-- 👨‍🍳 內場介面 -->
 <div id="back" style="display:none;" class="box">
   <div style="display:flex; justify-content: space-between; align-items: center;">
     <h3>📋 內場訂單清單</h3>
     <button class="gray" onclick="setRole('')">切換身分</button>
   </div>
-
-  <div class="sound-selector">
-    <label>🔔 選擇新訂單提示音：</label>
-    <select id="soundPicker">
-      <option value="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3">一般音效 (手機提醒)</option>
-      <option value="vkbzm-zmatn.mp3">神秘音效 (vkbzm)</option>
-    </select>
-    <button onclick="testSound()" style="padding:5px; font-size:12px; margin-top:5px; background:#666;">📢 測試音效</button>
-  </div>
-
   <div id="orders">正在同步訂單...</div>
 </div>
 
@@ -91,48 +81,9 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-let lastOrderCount = -1;
-let isAudioUnlocked = false;
-
-// 🔒 進入內場前的「解鎖聲音」流程
-function unlockBackOffice() {
-    alert("內場系統已就緒，請點擊確定以啟用自動音效提醒。");
-    const audio = document.getElementById('audioPlayer');
-    audio.play().then(() => {
-        audio.pause();
-        isAudioUnlocked = true;
-        setRole('back');
-    }).catch(e => {
-        console.error("解鎖失敗:", e);
-        isAudioUnlocked = true;
-        setRole('back');
-    });
-}
-
-function testSound() {
-    playNotificationSound();
-}
-
-function playNotificationSound() {
-    const audio = document.getElementById('audioPlayer');
-    const picker = document.getElementById('soundPicker');
-    audio.src = picker.value;
-    audio.currentTime = 0;
-    const playPromise = audio.play();
-    if (playPromise !== undefined) {
-        playPromise.catch(error => {
-            console.log("播放失敗，請確認檔案路徑或點擊畫面互動。內容：" + error);
-        });
-    }
-}
-
 function setRole(r){
-  if(!r) {
-      localStorage.removeItem("role");
-      lastOrderCount = -1;
-  } else {
-      localStorage.setItem("role", r);
-  }
+  if(!r) localStorage.removeItem("role");
+  else localStorage.setItem("role", r);
   if(r === 'front') { 
     document.getElementById('dishContainer').innerHTML = '';
     addDish(); 
@@ -227,23 +178,16 @@ function sendOrder(){
 
 db.ref("orders").on("value", snap => {
   const data = snap.val() || {};
-  const currentKeys = Object.keys(data);
-  const currentCount = currentKeys.length;
-  const role = localStorage.getItem("role");
-
-  // 🔊 判斷是否播放聲音
-  if (role === 'back' && lastOrderCount !== -1 && currentCount > lastOrderCount) {
-      playNotificationSound();
-  }
-  lastOrderCount = currentCount;
-
   let html = "";
   const now = Date.now();
   
-  const sortedKeys = currentKeys.sort((a,b) => {
+  // 🚀 核心邏輯：排序訂單
+  const sortedKeys = Object.keys(data).sort((a,b) => {
+    // 如果完成狀態不同，未完成的(false)排在前面
     if(data[a].done !== data[b].done) {
         return data[a].done ? 1 : -1;
     }
+    // 如果完成狀態相同，時間戳記較大(新)的排在前面
     return data[b].timestamp - data[a].timestamp;
   });
 
@@ -258,6 +202,8 @@ db.ref("orders").on("value", snap => {
         let extraText = it.extra && it.extra !== "無" ? ` + ${it.extra}` : "";
         itemsHtml += `<div class="item-row">${it.type} (${it.flavor})${extraText} x <b>${it.qty}</b></div>`;
       });
+    } else {
+      itemsHtml = `<div class="item-row" style="color:red">⚠️ 舊格式訂單，請刪除或忽略</div>`;
     }
 
     html += `
