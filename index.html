@@ -180,15 +180,9 @@ db.ref("orders").on("value", snap => {
   const data = snap.val() || {};
   let html = "";
   const now = Date.now();
-  
-  // 🚀 核心邏輯：排序訂單
   const sortedKeys = Object.keys(data).sort((a,b) => {
-    // 如果完成狀態不同，未完成的(false)排在前面
-    if(data[a].done !== data[b].done) {
-        return data[a].done ? 1 : -1;
-    }
-    // 如果完成狀態相同，時間戳記較大(新)的排在前面
-    return data[b].timestamp - data[a].timestamp;
+    if(data[a].done === data[b].done) return data[a].timestamp - data[b].timestamp;
+    return data[a].done ? 1 : -1;
   });
 
   sortedKeys.forEach(id => {
@@ -197,12 +191,14 @@ db.ref("orders").on("value", snap => {
     const statusClass = o.done ? "order-done" : (waitMin >= 10 ? "order-urgent" : "order-wait");
 
     let itemsHtml = "";
+    // 💡 防錯處理：如果沒有 items 陣列，可能是舊資料
     if (o.items && Array.isArray(o.items)) {
       o.items.forEach(it => {
         let extraText = it.extra && it.extra !== "無" ? ` + ${it.extra}` : "";
         itemsHtml += `<div class="item-row">${it.type} (${it.flavor})${extraText} x <b>${it.qty}</b></div>`;
       });
     } else {
+      // 處理舊格式數據，避免出現 undefined
       itemsHtml = `<div class="item-row" style="color:red">⚠️ 舊格式訂單，請刪除或忽略</div>`;
     }
 
