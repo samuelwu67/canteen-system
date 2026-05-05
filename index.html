@@ -28,7 +28,7 @@
   .dish-block { border: 2px solid #eee; padding: 15px; margin-bottom: 10px; border-radius: 8px; position: relative; background: #fafafa; }
   .del-dish { position: absolute; top: 5px; right: 5px; background: #ff5252; width: 30px; height: 30px; padding: 0; line-height: 30px; border-radius: 50%; color: white; border: none; font-weight: bold; }
 
-  /* 聲音提示條 */
+  /* 聲音狀態條 */
   .sound-status { background: #fff3cd; color: #856404; padding: 10px; border-radius: 8px; margin-bottom: 10px; font-size: 14px; text-align: center; border: 1px solid #ffeeba; }
 </style>
 </head>
@@ -37,14 +37,14 @@
 
 <h2>🍦 園遊會點餐系統</h2>
 
-<!-- 🔊 可愛提示音來源 (登鈴~) -->
+<!-- 🔊 這裡更換音效 -->
 <audio id="noticeSound" src="vkbzm-zmatn.mp3" preload="auto"></audio>
 
 <!-- 🎭 角色切換 -->
 <div id="roleBox" class="box">
   <h3>請選擇身分</h3>
   <button onclick="setRole('front')">我是外場 (點餐)</button>
-  <!-- 進入內場時順便啟動聲音權限 -->
+  <!-- 點擊此按鈕會解鎖瀏覽器聲音 -->
   <button onclick="enableSoundAndSetRole('back')" class="blue">我是內場 (出餐)</button>
 </div>
 
@@ -66,7 +66,7 @@
     <h3>📋 內場訂單清單</h3>
     <button class="gray" onclick="setRole('')">切換身分</button>
   </div>
-  <div id="soundAlert" class="sound-status">🔔 鈴聲偵測中... (若沒響請點擊螢幕任意處)</div>
+  <div id="soundAlert" class="sound-status">🔔 鈴聲偵測中... (新訂單來時會響)</div>
   <div id="orders">正在同步訂單...</div>
 </div>
 
@@ -90,14 +90,14 @@ const db = firebase.database();
 let lastOrderCount = -1;
 let soundEnabled = false;
 
-// 關鍵功能：按下按鈕的瞬間解鎖瀏覽器聲音
+// 啟動聲音並切換角色
 function enableSoundAndSetRole(role) {
   const audio = document.getElementById('noticeSound');
   audio.play().then(() => {
     audio.pause();
     audio.currentTime = 0;
     soundEnabled = true;
-  }).catch(e => console.log("等待手動解鎖"));
+  }).catch(e => console.log("等待手動解鎖聲音"));
   setRole(role);
 }
 
@@ -200,13 +200,12 @@ function sendOrder(){
   });
 }
 
-// 監聽訂單
 db.ref("orders").on("value", snap => {
   const data = snap.val() || {};
   const currentCount = Object.keys(data).length;
   const role = localStorage.getItem("role");
 
-  // 如果數量增加且是內場，播放可愛鈴聲
+  // 播放音效邏輯
   if (role === 'back' && lastOrderCount !== -1 && currentCount > lastOrderCount) {
     const audio = document.getElementById('noticeSound');
     audio.currentTime = 0;
@@ -219,9 +218,13 @@ db.ref("orders").on("value", snap => {
 
   let html = "";
   const now = Date.now();
+  
+  // 🚀 關鍵排序：最新(大timestamp)在上面，最舊(小timestamp)在下面
   const sortedKeys = Object.keys(data).sort((a,b) => {
-    if(data[a].done === data[b].done) return data[a].timestamp - data[b].timestamp;
-    return data[a].done ? 1 : -1;
+    if(data[a].done === data[b].done) {
+        return data[b].timestamp - data[a].timestamp; // 修改處：b - a 代表最新在頂部
+    }
+    return data[a].done ? 1 : -1; // 已完成的排在最後面
   });
 
   sortedKeys.forEach(id => {
@@ -259,7 +262,7 @@ db.ref("orders").on("value", snap => {
 function toggleDone(id, cur){ db.ref("orders/"+id).update({ done: !cur }); }
 function del(id){ if(confirm("確定徹底刪除嗎？")) db.ref("orders/"+id).remove(); }
 
-// 點擊網頁任意處自動解鎖聲音 (防呆)
+// 備用解鎖聲音
 document.body.onclick = function() {
     if(!soundEnabled) {
         const audio = document.getElementById('noticeSound');
