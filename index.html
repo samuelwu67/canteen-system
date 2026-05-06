@@ -27,6 +27,10 @@
   
   .dish-block { border: 2px solid #eee; padding: 15px; margin-bottom: 10px; border-radius: 8px; position: relative; background: #fafafa; }
   .del-dish { position: absolute; top: 5px; right: 5px; background: #ff5252; width: 30px; height: 30px; padding: 0; line-height: 30px; border-radius: 50%; color: white; border: none; font-weight: bold; }
+
+  /* 新增音效選單樣式 */
+  .sound-box { background: #fff3cd; border: 1px solid #ffeeba; padding: 10px; border-radius: 8px; margin-bottom: 15px; }
+  .sound-box label { font-size: 14px; font-weight: bold; color: #856404; }
 </style>
 </head>
 
@@ -34,11 +38,15 @@
 
 <h2>🍦 園遊會點餐系統</h2>
 
+<!-- 🔊 隱藏的音效播放器 -->
+<audio id="alarmAudio" preload="auto"></audio>
+
 <!-- 🎭 角色切換 -->
 <div id="roleBox" class="box">
   <h3>請選擇身分</h3>
   <button onclick="setRole('front')">我是外場 (點餐)</button>
-  <button onclick="setRole('back')" class="blue">我是內場 (出餐)</button>
+  <!-- 修改內場進入按鈕，加入聲音解鎖邏輯 -->
+  <button onclick="enableSoundAndSetRole('back')" class="blue">我是內場 (出餐)</button>
 </div>
 
 <!-- 🛒 外場介面 -->
@@ -61,6 +69,18 @@
     <h3>📋 內場訂單清單</h3>
     <button class="gray" onclick="setRole('')">切換身分</button>
   </div>
+
+  <!-- 🔊 音效選擇下拉選單 -->
+  <div class="sound-box">
+    <label>🔔 新訂單提醒音效：</label>
+    <select id="soundSelect">
+      <option value="none">無提醒聲 (預設)</option>
+      <option value="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3">普通手機鈴聲</option>
+      <option value="799687096.587826.mp3">自定義音效 (799687096)</option>
+    </select>
+    <small style="display:block; color:#856404; margin-top:5px;">※ 進入時點擊「我是內場」即已啟動聲音權限</small>
+  </div>
+
   <div id="orders">正在同步訂單...</div>
 </div>
 
@@ -81,8 +101,24 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+let lastOrderCount = -1; // 記錄上次訂單總數用
+
+// 🔊 啟動音效權限並切換角色
+function enableSoundAndSetRole(role) {
+  const audio = document.getElementById('alarmAudio');
+  // 播放一個靜音片段或立即暫停來騙過瀏覽器的自動播放限制
+  audio.play().then(() => {
+    audio.pause();
+    console.log("聲音權限已解鎖");
+  }).catch(e => console.log("等待手動點擊解鎖"));
+  setRole(role);
+}
+
 function setRole(r){
-  if(!r) localStorage.removeItem("role");
+  if(!r) {
+    localStorage.removeItem("role");
+    lastOrderCount = -1; // 切換時重置計數
+  }
   else localStorage.setItem("role", r);
   if(r === 'front') { 
     document.getElementById('dishContainer').innerHTML = '';
@@ -159,7 +195,6 @@ function sendOrder(){
   btn.disabled = true;
   db.ref("orders").once("value", snap => {
     const data = snap.val() || {};
-    // 🚀 訂單編號新規則：找目前最大編號 + 1
     let maxNo = 0;
     Object.values(data).forEach(o => {
         if(o.orderNo && o.orderNo > maxNo) maxNo = o.orderNo;
@@ -183,18 +218,29 @@ function sendOrder(){
   });
 }
 
+// 監聽訂單
 db.ref("orders").on("value", snap => {
   const data = snap.val() || {};
+  const orderIds = Object.keys(data);
+  const currentCount = orderIds.length;
+  const role = localStorage.getItem("role");
+
+  // 🚀 自動播放音效邏輯
+  if (role === 'back' && lastOrderCount !== -1 && currentCount > lastOrderCount) {
+    const soundSrc = document.getElementById('soundSelect').value;
+    if (soundSrc !== "none") {
+      const audio = document.getElementById('alarmAudio');
+      audio.src = soundSrc;
+      audio.currentTime = 0;
+      audio.play().catch(e => console.log("播放失敗，請點擊頁面解鎖聲音權限"));
+    }
+  }
+  lastOrderCount = currentCount;
+
   let html = "";
   const now = Date.now();
-
-  // 🚀 訂單排列規則：最新的在上面
-  const sortedKeys = Object.keys(data).sort((a,b) => {
-    // 首先區分完成與否，未完成的(false)排在前面
-    if(data[a].done !== data[b].done) {
-        return data[a].done ? 1 : -1;
-    }
-    // 如果狀態一樣，時間戳記較大(新)的排在前面
+  const sortedKeys = orderIds.sort((a,b) => {
+    if(data[a].done !== data[b].done) return data[a].done ? 1 : -1;
     return data[b].timestamp - data[a].timestamp;
   });
 
