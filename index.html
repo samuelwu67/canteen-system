@@ -166,12 +166,12 @@ function updateSubOptions(id) {
   const subDiv = document.getElementById(`sub_${id}`);
   if (type === "冰淇淋") {
     subDiv.innerHTML = `
-      口味：<select class="flavor"><option value="無">無</option><option value="原味">原味</option><option value="草莓">草莓</option><option value="巧克力">巧克力</option></select>
+      口味：<select class="flavor"></option><option value="原味">原味</option><option value="草莓">草莓</option><option value="巧克力">巧克力</option></select>
       配料：<select class="extra"><option value="無">無</option><option value="棉花糖">棉花糖</option><option value="巧克力脆片">巧克力脆片</option><option value="巧克力脆笛酥">巧克力脆笛酥</option></select>`;
   } else if (type === "鬆餅") {
-    subDiv.innerHTML = `選項：<select class="flavor"><option value="無">無</option><option value="加巧克力醬">加巧克力醬</option><option value="不加巧克力醬">不加巧克力醬</option></select><input type="hidden" class="extra" value="無">`;
+    subDiv.innerHTML = `口味：<select class="flavor"></option><option value="加巧克力醬">加巧克力醬</option><option value="不加巧克力醬">不加巧克力醬</option></select><input type="hidden" class="extra" value="無">`;
   } else if (type === "鯛魚燒") {
-    subDiv.innerHTML = `口味：<select class="flavor"><option value="無">無</option><option value="卡士達">卡士達</option><option value="巧克力">巧克力</option></select><input type="hidden" class="extra" value="無">`;
+    subDiv.innerHTML = `口味：<select class="flavor"></option><option value="卡士達">卡士達</option><option value="巧克力">巧克力</option></select><input type="hidden" class="extra" value="無">`;
   } else { subDiv.innerHTML = ''; }
 }
 
