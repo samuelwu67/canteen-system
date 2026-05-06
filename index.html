@@ -158,7 +158,14 @@ function sendOrder(){
 
   btn.disabled = true;
   db.ref("orders").once("value", snap => {
-    const orderNum = snap.numChildren() + 1;
+    const data = snap.val() || {};
+    // 🚀 訂單編號新規則：找目前最大編號 + 1
+    let maxNo = 0;
+    Object.values(data).forEach(o => {
+        if(o.orderNo && o.orderNo > maxNo) maxNo = o.orderNo;
+    });
+    const orderNum = maxNo + 1;
+
     const now = new Date();
     const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
     db.ref("orders").push({
@@ -180,9 +187,15 @@ db.ref("orders").on("value", snap => {
   const data = snap.val() || {};
   let html = "";
   const now = Date.now();
+
+  // 🚀 訂單排列規則：最新的在上面
   const sortedKeys = Object.keys(data).sort((a,b) => {
-    if(data[a].done === data[b].done) return data[a].timestamp - data[b].timestamp;
-    return data[a].done ? 1 : -1;
+    // 首先區分完成與否，未完成的(false)排在前面
+    if(data[a].done !== data[b].done) {
+        return data[a].done ? 1 : -1;
+    }
+    // 如果狀態一樣，時間戳記較大(新)的排在前面
+    return data[b].timestamp - data[a].timestamp;
   });
 
   sortedKeys.forEach(id => {
@@ -191,14 +204,12 @@ db.ref("orders").on("value", snap => {
     const statusClass = o.done ? "order-done" : (waitMin >= 10 ? "order-urgent" : "order-wait");
 
     let itemsHtml = "";
-    // 💡 防錯處理：如果沒有 items 陣列，可能是舊資料
     if (o.items && Array.isArray(o.items)) {
       o.items.forEach(it => {
         let extraText = it.extra && it.extra !== "無" ? ` + ${it.extra}` : "";
         itemsHtml += `<div class="item-row">${it.type} (${it.flavor})${extraText} x <b>${it.qty}</b></div>`;
       });
     } else {
-      // 處理舊格式數據，避免出現 undefined
       itemsHtml = `<div class="item-row" style="color:red">⚠️ 舊格式訂單，請刪除或忽略</div>`;
     }
 
