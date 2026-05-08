@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>拾玖冰屋點餐系統 - Stable</title>
+<title>拾玖冰屋點餐系統 - 手動編號版</title>
 
 <style>
   body { font-family: Arial, "Microsoft JhengHei"; background: #f0f2f5; padding: 15px; margin: 0; font-size: 18px; }
@@ -56,7 +56,13 @@
     <h3>🛒 外場點餐</h3>
     <button class="gray" onclick="setRole('')">切換身分</button>
   </div>
-  <p style="color:#666; font-size: 14px;">📝 先新增餐點，再選擇種類。系統會自動編號。</p>
+  
+  <div class="box" style="border: 2px solid #2196F3; margin-top: 0;">
+    <b>🔢 手動輸入訂單編號：</b>
+    <input type="number" id="manualOrderNo" placeholder="請輸入編號 (例如: 101)" min="1">
+  </div>
+
+  <p style="color:#666; font-size: 14px;">📝 先新增餐點，再選擇種類。</p>
   <div id="dishContainer"></div>
   <button class="add-btn" onclick="addDish()">➕ 新增一項餐點</button>
   <button onclick="sendOrder()" class="blue" id="btnSend">📦 送出完整訂單</button>
@@ -77,7 +83,6 @@
     <small style="display:block; color:#856404; margin-top:5px;">※ 進入時點擊「我是內場」即已啟動聲音權限</small>
   </div>
 
-  <!-- 📊 新增銷售統計區塊 -->
   <div class="stats-box">
     <div class="stats-title">
       <span>📊 銷售累計統計</span>
@@ -125,6 +130,7 @@ function setRole(r){
   else localStorage.setItem("role", r);
   if(r === 'front') { 
     document.getElementById('dishContainer').innerHTML = '';
+    document.getElementById('manualOrderNo').value = ''; // 切換時清空編號
     addDish(); 
   }
   showUI();
@@ -166,18 +172,22 @@ function updateSubOptions(id) {
   const subDiv = document.getElementById(`sub_${id}`);
   if (type === "冰淇淋") {
     subDiv.innerHTML = `
-      口味：<select class="flavor"></option><option value="原味">原味</option><option value="草莓">草莓</option><option value="巧克力">巧克力</option></select>
+      口味：<select class="flavor"><option value="原味">原味</option><option value="草莓">草莓</option><option value="巧克力">巧克力</option></select>
       配料：<select class="extra"><option value="無">無</option><option value="棉花糖">棉花糖</option><option value="巧克力脆片">巧克力脆片</option><option value="巧克力脆笛酥">巧克力脆笛酥</option></select>`;
   } else if (type === "鬆餅") {
-    subDiv.innerHTML = `口味：<select class="flavor"></option><option value="加巧克力醬">加巧克力醬</option><option value="不加巧克力醬">不加巧克力醬</option></select><input type="hidden" class="extra" value="無">`;
+    subDiv.innerHTML = `口味：<select class="flavor"><option value="加巧克力醬">加巧克力醬</option><option value="不加巧克力醬">不加巧克力醬</option></select><input type="hidden" class="extra" value="無">`;
   } else if (type === "鯛魚燒") {
-    subDiv.innerHTML = `口味：<select class="flavor"></option><option value="卡士達">卡士達</option><option value="巧克力">巧克力</option></select><input type="hidden" class="extra" value="無">`;
+    subDiv.innerHTML = `口味：<select class="flavor"><option value="卡士達">卡士達</option><option value="巧克力">巧克力</option></select><input type="hidden" class="extra" value="無">`;
   } else { subDiv.innerHTML = ''; }
 }
 
 function sendOrder(){
   const btn = document.getElementById("btnSend");
+  const manualNo = document.getElementById("manualOrderNo").value;
   const blocks = document.querySelectorAll('.dish-block');
+
+  // 🆕 檢查是否輸入編號
+  if(!manualNo) return alert("❌ 請先輸入訂單編號！");
   if(blocks.length === 0) return alert("請先新增餐點！");
 
   let items = [];
@@ -196,28 +206,26 @@ function sendOrder(){
   if(items.length === 0) return alert("請選擇餐點種類！");
 
   btn.disabled = true;
-  db.ref("orders").once("value", snap => {
-    const data = snap.val() || {};
-    let maxNo = 0;
-    Object.values(data).forEach(o => {
-        if(o.orderNo && o.orderNo > maxNo) maxNo = o.orderNo;
-    });
-    const orderNum = maxNo + 1;
-
-    const now = new Date();
-    const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-    db.ref("orders").push({
-      orderNo: orderNum,
-      items: items,
-      time: timeStr,
-      timestamp: Date.now(),
-      done: false
-    }).then(() => {
-      alert("✅ 訂單 #" + orderNum + " 已送出");
-      document.getElementById('dishContainer').innerHTML = '';
-      addDish();
-      btn.disabled = false;
-    });
+  
+  const now = new Date();
+  const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  
+  // 🆕 改用手動輸入的編號 manualNo
+  db.ref("orders").push({
+    orderNo: parseInt(manualNo),
+    items: items,
+    time: timeStr,
+    timestamp: Date.now(),
+    done: false
+  }).then(() => {
+    alert("✅ 訂單 #" + manualNo + " 已送出");
+    document.getElementById('dishContainer').innerHTML = '';
+    document.getElementById('manualOrderNo').value = ''; // 送出後清空編號
+    addDish();
+    btn.disabled = false;
+  }).catch(e => {
+    alert("發生錯誤: " + e.message);
+    btn.disabled = false;
   });
 }
 
@@ -228,7 +236,6 @@ db.ref("orders").on("value", snap => {
   const currentCount = orderIds.length;
   const role = localStorage.getItem("role");
 
-  // 🚀 自動播放音效邏輯
   if (role === 'back' && lastOrderCount !== -1 && currentCount > lastOrderCount) {
     const soundSrc = document.getElementById('soundSelect').value;
     if (soundSrc !== "none") {
@@ -240,7 +247,6 @@ db.ref("orders").on("value", snap => {
   }
   lastOrderCount = currentCount;
 
-  // 📊 計算銷售統計
   updateStatistics(data);
 
   let html = "";
@@ -282,25 +288,18 @@ db.ref("orders").on("value", snap => {
   document.getElementById("orders").innerHTML = html || "<p style='text-align:center;'>目前沒有訂單</p>";
 });
 
-// 📊 銷售統計核心函式
 function updateStatistics(ordersData) {
   const stats = {};
   const extras = {};
   const resetTime = parseInt(localStorage.getItem("statsResetTime") || 0);
 
   Object.values(ordersData).forEach(order => {
-    // 過濾掉重設時間之前的訂單
     if (order.timestamp < resetTime) return;
-
     if (order.items && Array.isArray(order.items)) {
       order.items.forEach(it => {
         const qty = parseInt(it.qty) || 0;
-        
-        // 統計主食 + 口味
         const mainKey = `${it.type}(${it.flavor})`;
         stats[mainKey] = (stats[mainKey] || 0) + qty;
-
-        // 統計配料 (如果不是 "無")
         if (it.extra && it.extra !== "無") {
           extras[it.extra] = (extras[it.extra] || 0) + qty;
         }
@@ -309,23 +308,18 @@ function updateStatistics(ordersData) {
   });
 
   let statsHtml = "";
-  // 顯示主食口味
   for (const [name, count] of Object.entries(stats)) {
     statsHtml += `<div class="stats-item"><b>${name}</b>：${count} 份</div>`;
   }
-  // 顯示配料
   for (const [name, count] of Object.entries(extras)) {
     statsHtml += `<div class="stats-item" style="color:#673ab7;">✨ ${name}：${count}</div>`;
   }
-
   document.getElementById("statsContent").innerHTML = statsHtml || "暫無新銷售紀錄";
 }
 
-// 🔄 重設統計
 function resetStats() {
   if (confirm("確定要重新計算銷售累計嗎？\n(這不會刪除訂單，只會將目前的計數歸零)")) {
     localStorage.setItem("statsResetTime", Date.now());
-    // 重新觸發一次統計更新
     db.ref("orders").once("value", snap => updateStatistics(snap.val() || {}));
   }
 }
