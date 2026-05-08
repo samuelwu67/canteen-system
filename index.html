@@ -130,7 +130,7 @@ function setRole(r){
   else localStorage.setItem("role", r);
   if(r === 'front') { 
     document.getElementById('dishContainer').innerHTML = '';
-    document.getElementById('manualOrderNo').value = ''; // 切換時清空編號
+    document.getElementById('manualOrderNo').value = ''; 
     addDish(); 
   }
   showUI();
@@ -173,11 +173,12 @@ function updateSubOptions(id) {
   if (type === "冰淇淋") {
     subDiv.innerHTML = `
       口味：<select class="flavor"><option value="原味">原味</option><option value="草莓">草莓</option><option value="巧克力">巧克力</option></select>
+      加一球：<select class="extra-ball"><option value="無">無</option><option value="原味">原味</option><option value="草莓">草莓</option><option value="巧克力">巧克力</option></select>
       配料：<select class="extra"><option value="無">無</option><option value="棉花糖">棉花糖</option><option value="巧克力脆片">巧克力脆片</option><option value="巧克力脆笛酥">巧克力脆笛酥</option></select>`;
   } else if (type === "鬆餅") {
-    subDiv.innerHTML = `口味：<select class="flavor"><option value="加巧克力醬">加巧克力醬</option><option value="不加巧克力醬">不加巧克力醬</option></select><input type="hidden" class="extra" value="無">`;
+    subDiv.innerHTML = `口味：<select class="flavor"><option value="加巧克力醬">加巧克力醬</option><option value="不加巧克力醬">不加巧克力醬</option></select><input type="hidden" class="extra-ball" value="無"><input type="hidden" class="extra" value="無">`;
   } else if (type === "鯛魚燒") {
-    subDiv.innerHTML = `口味：<select class="flavor"><option value="卡士達">卡士達</option><option value="巧克力">巧克力</option></select><input type="hidden" class="extra" value="無">`;
+    subDiv.innerHTML = `口味：<select class="flavor"><option value="卡士達">卡士達</option><option value="巧克力">巧克力</option></select><input type="hidden" class="extra-ball" value="無"><input type="hidden" class="extra" value="無">`;
   } else { subDiv.innerHTML = ''; }
 }
 
@@ -186,7 +187,6 @@ function sendOrder(){
   const manualNo = document.getElementById("manualOrderNo").value;
   const blocks = document.querySelectorAll('.dish-block');
 
-  // 🆕 檢查是否輸入編號
   if(!manualNo) return alert("❌ 請先輸入訂單編號！");
   if(blocks.length === 0) return alert("請先新增餐點！");
 
@@ -197,6 +197,7 @@ function sendOrder(){
       items.push({
         type: type,
         flavor: b.querySelector('.flavor') ? b.querySelector('.flavor').value : "無",
+        extraBall: b.querySelector('.extra-ball') ? b.querySelector('.extra-ball').value : "無",
         extra: b.querySelector('.extra') ? b.querySelector('.extra').value : "無",
         qty: parseInt(b.querySelector('.qty').value)
       });
@@ -210,7 +211,6 @@ function sendOrder(){
   const now = new Date();
   const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   
-  // 🆕 改用手動輸入的編號 manualNo
   db.ref("orders").push({
     orderNo: parseInt(manualNo),
     items: items,
@@ -220,7 +220,7 @@ function sendOrder(){
   }).then(() => {
     alert("✅ 訂單 #" + manualNo + " 已送出");
     document.getElementById('dishContainer').innerHTML = '';
-    document.getElementById('manualOrderNo').value = ''; // 送出後清空編號
+    document.getElementById('manualOrderNo').value = ''; 
     addDish();
     btn.disabled = false;
   }).catch(e => {
@@ -229,7 +229,6 @@ function sendOrder(){
   });
 }
 
-// 監聽訂單
 db.ref("orders").on("value", snap => {
   const data = snap.val() || {};
   const orderIds = Object.keys(data);
@@ -264,8 +263,9 @@ db.ref("orders").on("value", snap => {
     let itemsHtml = "";
     if (o.items && Array.isArray(o.items)) {
       o.items.forEach(it => {
+        let ballText = it.extraBall && it.extraBall !== "無" ? ` + 加一球(${it.extraBall})` : "";
         let extraText = it.extra && it.extra !== "無" ? ` + ${it.extra}` : "";
-        itemsHtml += `<div class="item-row">${it.type} (${it.flavor})${extraText} x <b>${it.qty}</b></div>`;
+        itemsHtml += `<div class="item-row">${it.type} (${it.flavor})${ballText}${extraText} x <b>${it.qty}</b></div>`;
       });
     } else {
       itemsHtml = `<div class="item-row" style="color:red">⚠️ 舊格式訂單，請刪除或忽略</div>`;
@@ -300,6 +300,13 @@ function updateStatistics(ordersData) {
         const qty = parseInt(it.qty) || 0;
         const mainKey = `${it.type}(${it.flavor})`;
         stats[mainKey] = (stats[mainKey] || 0) + qty;
+        
+        // 統計加球口味
+        if (it.extraBall && it.extraBall !== "無") {
+          const ballKey = `加球(${it.extraBall})`;
+          stats[ballKey] = (stats[ballKey] || 0) + qty;
+        }
+
         if (it.extra && it.extra !== "無") {
           extras[it.extra] = (extras[it.extra] || 0) + qty;
         }
